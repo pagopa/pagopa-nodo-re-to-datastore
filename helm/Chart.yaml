@@ -1,0 +1,10 @@
+apiVersion: v2
+name: pagopa-biz-events-datastore
+description: Microservice to store biz events to CosmosDB
+type: application
+version: 0.5.1
+appVersion: 0.5.1
+dependencies:
+  - name: microservice-chart
+    version: 1.21.0
+    repository: "https://pagopa.github.io/aks-microservice-chart-blueprint"
