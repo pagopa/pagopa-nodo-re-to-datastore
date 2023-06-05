@@ -1,4 +1,4 @@
-package it.gov.pagopa.bizeventsdatastore;
+package it.gov.pagopa.nodoretodatastore;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;

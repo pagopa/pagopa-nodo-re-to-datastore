@@ -1,10 +1,10 @@
-package it.gov.pagopa.bizeventsdatastore;
+package it.gov.pagopa.nodoretodatastore;
 
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.OutputBinding;
 import com.microsoft.azure.functions.annotation.*;
-import it.gov.pagopa.bizeventsdatastore.entity.ReEvent;
-import it.gov.pagopa.bizeventsdatastore.exception.AppException;
+import it.gov.pagopa.nodoretodatastore.entity.ReEvent;
+import it.gov.pagopa.nodoretodatastore.exception.AppException;
 import lombok.NonNull;
 
 import java.time.LocalDateTime;

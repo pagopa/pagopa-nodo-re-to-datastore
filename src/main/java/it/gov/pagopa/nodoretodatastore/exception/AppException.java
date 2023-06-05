@@ -1,4 +1,4 @@
-package it.gov.pagopa.bizeventsdatastore.exception;
+package it.gov.pagopa.nodoretodatastore.exception;
 
 public class AppException extends Exception {
 

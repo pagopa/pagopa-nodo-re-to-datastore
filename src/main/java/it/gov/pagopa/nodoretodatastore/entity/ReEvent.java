@@ -1,4 +1,4 @@
-package it.gov.pagopa.bizeventsdatastore.entity;
+package it.gov.pagopa.nodoretodatastore.entity;
 
 import lombok.*;
 
