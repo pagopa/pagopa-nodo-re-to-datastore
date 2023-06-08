@@ -21,27 +21,34 @@ parameters:
     displayName: Run tests
     type: boolean
     default: false
+  - name: "FORCE_REPLACE_DOCKER_IMAGE"
+    displayName: "Force the existing docker image to be replaced"
+    type: boolean
+    default: False
+    values:
+      - False
+      - True
 
 variables:
   APP_NAME: "nodo-re-to-datastore"
+  imageRepository: '$(IMAGE_REPOSITORY_NAME)'
+
   ${{ if eq(parameters['ENV'], 'dev') }}:
     AZURE_SUBSCRIPTION: $(DEV_AZURE_SUBSCRIPTION)
-    RESOURCE_GROUP: $(DEV_WEB_APP_RESOURCE_GROUP_NAME)
     STAGE: "d"
+    RESOURCE_GROUP: $(DEV_WEB_APP_RESOURCE_GROUP_NAME)
     dockerRegistryServiceConnection: $(DEV_CONTAINER_REGISTRY)
     dockerNamespace: $(DEV_CONTAINER_NAMESPACE)
-
   ${{ if eq(parameters['ENV'], 'uat') }}:
     AZURE_SUBSCRIPTION: $(UAT_AZURE_SUBSCRIPTION)
-    RESOURCE_GROUP: $(UAT_WEB_APP_RESOURCE_GROUP_NAME)
     STAGE: "u"
+    RESOURCE_GROUP: $(UAT_WEB_APP_RESOURCE_GROUP_NAME)
     dockerRegistryServiceConnection: $(UAT_CONTAINER_REGISTRY)
     dockerNamespace: $(UAT_CONTAINER_NAMESPACE)
-
   ${{ if eq(parameters['ENV'], 'prod') }}:
     AZURE_SUBSCRIPTION: $(PROD_AZURE_SUBSCRIPTION)
-    RESOURCE_GROUP: $(PROD_WEB_APP_RESOURCE_GROUP_NAME)
     STAGE: "p"
+    RESOURCE_GROUP: $(PROD_WEB_APP_RESOURCE_GROUP_NAME)
     dockerRegistryServiceConnection: $(PROD_CONTAINER_REGISTRY)
     dockerNamespace: $(PROD_CONTAINER_NAMESPACE)
 
@@ -49,8 +56,6 @@ variables:
     SOURCE_BRANCH: "main" # force to main branch
   ${{ if ne(variables['Build.SourceBranchName'], 'merge') }}:
     SOURCE_BRANCH: ${{ variables['Build.SourceBranchName'] }}
-
-
 
   MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
   MAVEN_OPTS: "-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)"
@@ -65,232 +70,134 @@ pr: none
 pool:
   vmImage: ubuntu-latest
 
+resources:
+  repositories:
+    - repository: pagopaCommons
+      type: github
+      name: pagopa/azure-pipeline-templates
+      ref: refs/tags/v2.10.1
+      endpoint: 'io-azure-devops-github-ro'
+
 stages:
 
   # Create a release on GitHub
-  - stage: release_service
-    condition: ne('${{ parameters.SEMVER }}', 'skip')
-    pool:
-      vmImage: "ubuntu-latest"
+  - stage: Release
     jobs:
-      - job: releaseService
+      - job: make_release
         steps:
           - checkout: self
             clean: true
             persistCredentials: true
 
-          - script: |
-              git checkout $(SOURCE_BRANCH)
+          - ${{ if ne(parameters.SEMVER, 'skip') }}:
+              - template: templates/maven-github-release/template.yaml@pagopaCommons
+                parameters:
+                  release_branch: $(SOURCE_BRANCH)
+                  gitEmail: $(GIT_EMAIL)
+                  gitUsername: $(GIT_USERNAME)
+                  gitHubConnection: $(GITHUB_CONNECTION)
+                  ${{ if ne(parameters.SEMVER, 'skip') }}:
+                    semver: '${{ parameters.SEMVER }}'
+                  ${{ if eq(parameters.SEMVER, 'skip') }}:
+                    semver: 'buildNumber' # this case is impossible due to main condition, but it is necessary to work property
+
+          - template: templates/maven-github-current-version/template.yaml@pagopaCommons
+
+  # Build and Push Docker Image
+  - stage: Build
+    dependsOn: Release
+    variables:
+      current_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
+    jobs:
+      - job: "build"
+        steps:
+          - checkout: self
+            persistCredentials: true
 
           - script: |
-              git config --global user.name "$(GIT_USERNAME)"
-              git config --global user.email "$(GIT_EMAIL)"
+              git checkout $(sourceBranch)
 
-          - template: azure-templates/maven-versioning.yml
+          - task: Maven@3
+            inputs:
+              mavenPomFile: 'pom.xml'
+              publishJUnitResults: false
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.11'
+              mavenVersionOption: 'Default'
+              mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
+              mavenAuthenticateFeed: false
+              effectivePomSkip: false
+              sonarQubeRunAnalysis: false
+
+          - template: templates/docker-release/template.yaml@pagopaCommons
             parameters:
-              semver: "${{ parameters.SEMVER }}"
-
-          - task: Bash@3
-            name: pomversion
-            inputs:
-              targetType: "inline"
-              script: |
-                version=$(mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
-                echo "##vso[task.setvariable variable=next;isOutput=true]$version"
-              failOnStderr: true
-
-          - script: |
-              git add pom.xml
-              git commit -m "Bump version [skip ci]"
-              git push origin $(SOURCE_BRANCH)
-
-
-          - script: |
-              HEAD_SHA=$(git rev-parse HEAD)
-              TAG="$(pomversion.next)"
-              TITLE="Release $(pomversion.next)"
-              echo "##vso[task.setvariable variable=title]$TITLE"
-              echo "##vso[task.setvariable variable=sha]$HEAD_SHA"
-              echo "##vso[task.setvariable variable=tag]$TAG"
-
-          - script: |
-              echo $(tag)
-              echo $(title)
-              echo $(sha)
-
-
-          # create new release
-          - task: GitHubRelease@0
-            inputs:
-              gitHubConnection: $(GITHUB_CONNECTION)
-              repositoryName: $(Build.Repository.Name)
-              action: create
-              target: $(sha)
-              tagSource: manual
-              tag: $(tag)
-              title: $(title)
-              addChangelog: true
+              CONTAINER_REGISTRY_SERVICE_CONN: $(dockerRegistryServiceConnection)
+              CONTAINER_REGISTRY_FQDN: $(dockerNamespace)
+              DOCKER_IMAGE_NAME: $(imageRepository)
+              DOCKER_IMAGE_TAG: $(current_version)
+              FORCE_REPLACE_DOCKER_IMAGE: ${{ parameters.FORCE_REPLACE_DOCKER_IMAGE }}
 
   # Deploy on Azure
   - stage: deploy
+    variables:
+      current_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
     condition: not(failed('releaseService'))
     pool:
       vmImage: "ubuntu-latest"
     jobs:
       - job: deployJava
         steps:
-
-          - script: |
-              echo ${{variables['Build.SourceBranchName']}}        
-              echo $(SOURCE_BRANCH)
-              echo $(TEST)
-
-          - checkout: self
-            clean: true
-            persistCredentials: true
-            submodules: true
-
-          - script: |
-              echo "Checkout on $(SOURCE_BRANCH)"
-              git checkout $(SOURCE_BRANCH)
-            displayName: Checkout on source branch
-
-          #          - task: Bash@3
-          #            name: application_properties
-          #            inputs:
-          #              targetType: "inline"
-          #              script: |
-          #                cp src/main/resources/application-azure-$(STAGE).properties src/main/resources/application.properties
-          #                cat src/main/resources/application.properties
-          #              failOnStderr: true
-
-          - task: Cache@2
-            inputs:
-              key: 'maven | "$(Agent.OS)" | pom.xml'
-              restoreKeys: |
-                maven | "$(Agent.OS)"
-                maven
-              path: $(MAVEN_CACHE_FOLDER)
-            displayName: Set Maven Cache
-
-          - task: Bash@3
-            # When the maven task is installed, mvn can be used in a script
-            name: pomversion
-            inputs:
-              targetType: "inline"
-              script: |
-                version=$(mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
-                echo "##vso[task.setvariable variable=next;isOutput=true]$version"
-              failOnStderr: true
-
-          - task: Maven@3
-            inputs:
-              mavenPomFile: 'pom.xml'
-              publishJUnitResults: false
-              javaHomeOption: 'JDKVersion'
-              jdkVersionOption: '1.11'
-              mavenVersionOption: 'Default'
-              mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
-              mavenAuthenticateFeed: false
-              effectivePomSkip: false
-              sonarQubeRunAnalysis: false
-
-          - task: Docker@2
-            displayName: Build and push an image to container registry
-            inputs:
-              containerRegistry: '$(dockerRegistryServiceConnection)'
-              repository: '$(IMAGE_REPOSITORY)'
-              command: 'buildAndPush'
-              tags: |
-                $(Build.BuildId)
-                latest
-                $(pomversion.next)
-
-          # deploy project-fn
+          # deploy reporting-fn
           - task: AzureFunctionAppContainer@1
-            displayName: Deploy Function App [DEV]
+            displayName: Deploy Function App [DEV|UAT]
+            condition: in('${{ parameters.ENV }}', 'dev', 'uat')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.APP_NAME}}-fn-project"
-              imageName: "${{variables.DEV_CONTAINER_NAMESPACE}}/project:$(Build.BuildId)"
+              appName: "${{variables.APP_NAME}}-fn"
+              imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
               slotName: production
+              resourceGroupName: $(RESOURCE_GROUP)
+          - task: AzureFunctionAppContainer@1
+            displayName: Deploy Function App [PROD] staging
+            condition: eq('${{ parameters.ENV }}', 'prod')
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: "${{variables.APP_NAME}}-fn"
+              imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
+              deployToSlotOrASE: true
+              slotName: staging
+              resourceGroupName: $(RESOURCE_GROUP)
 
           - script: |
               echo "##vso[task.setvariable variable=version;isOutput=true]$(pomversion.next)"
             name: dockerTag
-
-
-  # Run test
-  - stage: test
-    # run this stage only if 'test' is enabled
-    condition: and(not(failed('deployJava')), eq('${{ parameters.TEST }}', 'true'))
+  - stage: deployApprovalPROD
+    condition: eq('${{ parameters.ENV }}', 'prod')
+    dependsOn: deploy
     pool:
       vmImage: "ubuntu-latest"
     jobs:
-      # is needed to wait for startup of application
-      - job: waitStartup
-        pool: Server
+      - job: waitForApprovalPROD
+        displayName: waiting for approval
+        pool: server
+        timeoutInMinutes: 4320 # 3 days
         steps:
-          - task: Delay@1
+          - task: ManualValidation@0
+            displayName: Manual Approval
             inputs:
-              delayForMinutes: '10'
+              onTimeout: "reject"
 
-      #      - job: integrationTests
-      #        dependsOn: waitStartup
-      #        steps:
-      #          - script: |
-      #              git checkout $(SOURCE_BRANCH)
-
-      #          - script: |
-      #              yarn global add newman
-      #            displayName: 'newman installation'
-
-      #          - script: |
-      #              newman run api-test/Project.postman_collection.json --environment=api-test/Azure.postman_environment.json --reporters cli,junit --reporter-junit-export Results/api-config-TEST.xml --verbose
-      #            displayName: 'Run api test'
-      #            continueOnError: false
-
-      #          - task: PublishTestResults@2
-      #            condition: always()
-      #            inputs:
-      #              testResultsFormat: 'JUnit'
-      #              testResultsFiles: '**/*-TEST.xml'
-      #              searchFolder: '$(System.DefaultWorkingDirectory)'
-
-      - job: deployUAT
-        dependsOn: integrationTests
-        variables:
-          version: $[ stageDependencies.deploy.deployJava.outputs['dockerTag.version'] ]
+      - job: completeProdDeployFn
+        displayName: complete prod function deploy
+        dependsOn: waitForApprovalPROD
         steps:
-          - task: Maven@3
+          # deploy functions - swap
+          - task: AzureAppServiceManage@0
+            displayName: Swapping App Service Deploy
             inputs:
-              mavenPomFile: 'pom.xml'
-              publishJUnitResults: false
-              javaHomeOption: 'JDKVersion'
-              jdkVersionOption: '1.11'
-              mavenVersionOption: 'Default'
-              mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
-              mavenAuthenticateFeed: false
-              effectivePomSkip: false
-              sonarQubeRunAnalysis: false
-
-          - task: Docker@2
-            displayName: Build and push an image to UAT container registry
-            inputs:
-              containerRegistry: '$(UAT_CONTAINER_REGISTRY)'
-              repository: '$(IMAGE_REPOSITORY)'
-              command: 'buildAndPush'
-              tags: |
-                $(Build.BuildId)
-                latest
-                $(version)
-
-          # deploy project-fn
-          - task: AzureFunctionAppContainer@1
-            displayName: Deploy Function App [UAT]
-            condition: in('${{ parameters.ENV }}', 'uat')
-            inputs:
-              azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.APP_NAME}}-fn-project}"
-              imageName: "${{variables.UAT_CONTAINER_NAMESPACE}}/project:$(Build.BuildId)"
-              slotName: production
+              ConnectedServiceName: $(AZURE_SUBSCRIPTION)
+              WebAppName: "${{variables.APP_NAME}}-fn"
+              ResourceGroupName: $(RESOURCE_GROUP)
+              SourceSlot: staging
+              SwapWithProduction: true
+              Slot: production
