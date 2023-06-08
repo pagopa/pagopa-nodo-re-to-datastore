@@ -23,10 +23,10 @@ parameters:
     default: false
 
 variables:
+  APP_NAME: "nodo-re-to-datastore"
   ${{ if eq(parameters['ENV'], 'dev') }}:
     AZURE_SUBSCRIPTION: $(DEV_AZURE_SUBSCRIPTION)
     RESOURCE_GROUP: $(DEV_WEB_APP_RESOURCE_GROUP_NAME)
-    APP_NAME: $(DEV_WEB_APP_NAME)
     STAGE: "d"
     dockerRegistryServiceConnection: $(DEV_CONTAINER_REGISTRY)
     dockerNamespace: $(DEV_CONTAINER_NAMESPACE)
@@ -34,7 +34,6 @@ variables:
   ${{ if eq(parameters['ENV'], 'uat') }}:
     AZURE_SUBSCRIPTION: $(UAT_AZURE_SUBSCRIPTION)
     RESOURCE_GROUP: $(UAT_WEB_APP_RESOURCE_GROUP_NAME)
-    APP_NAME: $(UAT_WEB_APP_NAME)
     STAGE: "u"
     dockerRegistryServiceConnection: $(UAT_CONTAINER_REGISTRY)
     dockerNamespace: $(UAT_CONTAINER_NAMESPACE)
@@ -42,7 +41,6 @@ variables:
   ${{ if eq(parameters['ENV'], 'prod') }}:
     AZURE_SUBSCRIPTION: $(PROD_AZURE_SUBSCRIPTION)
     RESOURCE_GROUP: $(PROD_WEB_APP_RESOURCE_GROUP_NAME)
-    APP_NAME: $(PROD_WEB_APP_NAME)
     STAGE: "p"
     dockerRegistryServiceConnection: $(PROD_CONTAINER_REGISTRY)
     dockerNamespace: $(PROD_CONTAINER_NAMESPACE)
@@ -213,7 +211,7 @@ stages:
             displayName: Deploy Function App [DEV]
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.DEV_WEB_APP_NAME}}-fn-project"
+              appName: "${{variables.APP_NAME}}-fn-project"
               imageName: "${{variables.DEV_CONTAINER_NAMESPACE}}/project:$(Build.BuildId)"
               slotName: production
 
@@ -293,6 +291,6 @@ stages:
             condition: in('${{ parameters.ENV }}', 'uat')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.UAT_WEB_APP_NAME}}-fn-project}"
+              appName: "${{variables.APP_NAME}}-fn-project}"
               imageName: "${{variables.UAT_CONTAINER_NAMESPACE}}/project:$(Build.BuildId)"
               slotName: production

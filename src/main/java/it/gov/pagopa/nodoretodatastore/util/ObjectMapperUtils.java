@@ -23,6 +23,7 @@ public class ObjectMapperUtils {
         modelMapper = new ModelMapper();
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
         objectMapper = new ObjectMapper();
+        objectMapper.findAndRegisterModules();
     }
 
     /**
@@ -44,6 +45,9 @@ public class ObjectMapperUtils {
         return modelMapper.map(entity, outClass);
     }
 
+    public static <D> D readValue(String string,Class<D> clazz) throws JsonProcessingException {
+        return objectMapper.readValue(string,clazz);
+    }
     /**
      * <p>Note: outClass object must have default constructor with no arguments</p>
      *

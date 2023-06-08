@@ -1,10 +1,12 @@
 package it.gov.pagopa.nodoretodatastore;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.OutputBinding;
 import com.microsoft.azure.functions.annotation.*;
 import it.gov.pagopa.nodoretodatastore.entity.ReEvent;
 import it.gov.pagopa.nodoretodatastore.exception.AppException;
+import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import lombok.NonNull;
 
 import java.time.LocalDateTime;
@@ -29,12 +31,12 @@ public class NodoReEventToDataStore {
                     eventHubName = "", // blank because the value is included in the connection string
                     connection = "EVENTHUB_CONN_STRING",
                     cardinality = Cardinality.MANY)
-    		List<ReEvent> reEvents,
+    		List<String> reEvents,
     		@BindingName(value = "PropertiesArray") Map<String, Object>[] properties,
             @CosmosDBOutput(
     	            name = "NodoReEventDatastore",
-    	            databaseName = "db",
-    	            collectionName = "nodo-re-events",
+    	            databaseName = "nodo_re",
+    	            collectionName = "events",
     	            createIfNotExists = false,
                     connectionStringSetting = "COSMOS_CONN_STRING")
                     @NonNull OutputBinding<List<ReEvent>> documentdb,
@@ -50,7 +52,14 @@ public class NodoReEventToDataStore {
         	if (reEvents.size() == properties.length) {
 				List<ReEvent> reEventsWithProperties = IntStream.of(reEvents.size()).mapToObj(i -> {
 					int index = i-1;
-					ReEvent reEvent = reEvents.get(index);
+					logger.info("processing "+index+" of "+properties.length);
+					ReEvent reEvent = null;
+					try {
+						reEvent = ObjectMapperUtils.readValue(reEvents.get(index), ReEvent.class);
+					} catch (JsonProcessingException e) {
+						throw new RuntimeException(e);
+					}
+
 					String msg = String.format("NodoReEventToDataStore function called at %s with event id %s rx",
 							LocalDateTime.now(), reEvent.getUniqueId());
 					logger.info(msg);
@@ -67,6 +76,7 @@ public class NodoReEventToDataStore {
         } catch (NullPointerException e) {
             logger.severe("NullPointerException exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         } catch (Exception e) {
+			e.printStackTrace();
             logger.severe("Generic exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         }
 

@@ -3,12 +3,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>it.gov.pagopa.bizeventsdatastore</groupId>
-    <artifactId>biz-events-datastore-function</artifactId>
-    <version>0.5.1</version>
+    <groupId>it.gov.pagopa</groupId>
+    <artifactId>nodoretodatastore</artifactId>
+    <version>0.0.1</version>
     <packaging>jar</packaging>
 
-    <name>Biz Events Datastore Fn</name>
+    <name>Nodo RE to datastore Fn</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -17,33 +17,21 @@
         <azure.functions.java.library.version>1.4.2</azure.functions.java.library.version>
         <functionAppName>com.microsoft.azure-20220215182005862</functionAppName>
         <resteasy.version>3.15.3.Final</resteasy.version>
-        <cosmos-data-version>3.29.0</cosmos-data-version>
-        <lombok.version>1.18.24</lombok.version>
-        <google-api-client.version>2.0.1</google-api-client.version>
     </properties>
 
     <dependencies>
-    
-    	<dependency>
+        <!-- Start Azure -->
+        <dependency>
             <groupId>org.modelmapper</groupId>
             <artifactId>modelmapper</artifactId>
             <version>3.0.0</version>
         </dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>${lombok.version}</version>
-			<scope>provided</scope>
-		</dependency>
-    
-        <!-- Start Azure -->
-        
         <dependency>
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-library</artifactId>
             <version>${azure.functions.java.library.version}</version>
         </dependency>
-        
+
         <!-- End Azure -->
 
         <!-- Test -->
@@ -66,12 +54,6 @@
             <version>4.3.1</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-    		<groupId>com.github.tomakehurst</groupId>
-    		<artifactId>wiremock</artifactId>
-    		<version>2.27.2</version>
-    		<scope>test</scope>
-		</dependency>
 
         <!-- jaxb -->
         <dependency>
@@ -129,22 +111,35 @@
         <!-- Jackson START-->
 
         <dependency>
-          <groupId>com.google.api-client</groupId>
-          <artifactId>google-api-client-gson</artifactId>
-          <version>${google-api-client.version}</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.13.1</version>
         </dependency>
-        
+
         <dependency>
-          <groupId>com.google.http-client</groupId>
-          <artifactId>google-http-client-jackson2</artifactId>
-          <version>1.42.3</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.13.2.1</version>
         </dependency>
-        
+
         <dependency>
-          <groupId>com.fasterxml.jackson.datatype</groupId>
-          <artifactId>jackson-datatype-jsr310</artifactId>
-         <version>2.14.1</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.13.1</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+            <version>2.13.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.15.2</version>
+        </dependency>
+
 
         <!-- Jackson END-->
 
@@ -155,22 +150,6 @@
             <version>1.18.20</version>
             <scope>provided</scope>
         </dependency>
-        
-        <!-- HTTP Client -->
-
-	    <dependency>
-		  <groupId>com.google.http-client</groupId>
-		  <artifactId>google-http-client</artifactId>
-		  <version>1.42.3</version>
-	    </dependency>
-
-        <!-- HTTP Client -->
-
-	    <dependency>
-		  <groupId>com.google.http-client</groupId>
-		  <artifactId>google-http-client</artifactId>
-		  <version>1.42.3</version>
-	    </dependency>
 
     </dependencies>
 
@@ -196,7 +175,7 @@
                     <appSettings>
                         <property>
                             <name>FUNCTIONS_EXTENSION_VERSION</name>
-                            <value>~2</value>
+                            <value>~3</value>
                         </property>
                     </appSettings>
                     <resourceGroup>java-functions-group</resourceGroup>
