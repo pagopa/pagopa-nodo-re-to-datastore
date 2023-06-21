@@ -1,5 +1,9 @@
 package it.gov.pagopa.nodoretodatastore;
 
+import com.azure.data.tables.TableClient;
+import com.azure.data.tables.TableServiceClient;
+import com.azure.data.tables.TableServiceClientBuilder;
+import com.azure.data.tables.models.TableEntity;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.Cardinality;
@@ -28,7 +32,13 @@ public class NodoReEventToDataStore {
      * This function will be invoked when an Event Hub trigger occurs
      */
 
+	private static String idField = "unique-id";
+	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
+	private static String partitionKey = System.getenv("TABLE_STORAGE_PARTITION_KEY");
+
 	private static MongoClient mongoClient = null;
+
+	private static TableServiceClient tableServiceClient = null;
 
 	private static MongoClient getMongoClient(){
 		if(mongoClient==null){
@@ -37,7 +47,23 @@ public class NodoReEventToDataStore {
 		return mongoClient;
 	}
 
+	private static TableServiceClient getTableServiceClient(){
+		if(tableServiceClient==null){
+			tableServiceClient = new TableServiceClientBuilder().connectionString(System.getenv("TABLE_STORAGE_CONN_STRING"))
+					.buildClient();
+			tableServiceClient.createTableIfNotExists(tableName);
+		}
+		return tableServiceClient;
+	}
 
+
+	private void toTableStorage(TableClient tableClient,Map<String,Object> reEvent){
+		TableEntity entity = new TableEntity(partitionKey, (String)reEvent.get(idField));
+		reEvent.keySet().forEach(d->{
+			entity.addProperty(d,reEvent.get(d));
+		});
+		tableClient.createEntity(entity);
+	}
 
     @FunctionName("EventHubNodoReEventProcessor")
     public void processNodoReEvent (
@@ -57,7 +83,12 @@ public class NodoReEventToDataStore {
 
         String message = String.format("NodoReEventToDataStore function called at %s with events list size %s and properties size %s", LocalDateTime.now(), reEvents.size(), properties.length);
         logger.info(message);
-        
+
+
+
+
+		TableClient tableClient = getTableServiceClient().getTableClient(tableName);
+
         // persist the item
         try {
         	if (reEvents.size() == properties.length) {
@@ -73,6 +104,8 @@ public class NodoReEventToDataStore {
 					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
 					reEvent.putAll(properties[index]);
 					reEventsWithProperties.add(new Document(reEvent));
+
+					toTableStorage(tableClient,reEvent);
 				}
 				collection.insertMany(reEventsWithProperties);
 
