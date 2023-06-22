@@ -32,12 +32,12 @@ data "azurerm_key_vault_secret" "key_vault_bot_token" {
   key_vault_id = data.azurerm_key_vault.key_vault.id
 }
 
-data "azurerm_key_vault_secret" "key_vault_cucumber_token" {
-  name         = "cucumber-token"
-  key_vault_id = data.azurerm_key_vault.key_vault.id
-}
+#data "azurerm_key_vault_secret" "key_vault_cucumber_token" {
+#  name         = "cucumber-token"
+#  key_vault_id = data.azurerm_key_vault.key_vault.id
+#}
 
-data "azurerm_key_vault_secret" "key_vault_sa_connection_string" {
-  name         = "afm-${var.env_short}-sa-connection-string"
-  key_vault_id = data.azurerm_key_vault.domain_key_vault.id
-}
+#data "azurerm_key_vault_secret" "key_vault_integration_test_subkey" {
+#  name         = "integration-test-subkey"
+#  key_vault_id = data.azurerm_key_vault.key_vault.id
+#}

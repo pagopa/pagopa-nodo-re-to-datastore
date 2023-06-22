@@ -71,7 +71,7 @@ resource "azurerm_key_vault_access_policy" "ad_kv_group_policy" {
   certificate_permissions = []
 }
 
-resource "azurerm_key_vault_access_policy" "ad_kv_domain_group_policy" {
+resource "azurerm_key_vault_access_policy" "ad_domain_kv_group_policy" {
   key_vault_id = data.azurerm_key_vault.domain_key_vault.id
 
   tenant_id = data.azurerm_client_config.current.tenant_id
