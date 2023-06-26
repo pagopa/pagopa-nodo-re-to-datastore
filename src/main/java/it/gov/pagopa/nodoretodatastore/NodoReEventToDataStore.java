@@ -33,6 +33,7 @@ public class NodoReEventToDataStore {
      */
 
 	private static String idField = "unique-id";
+
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
 	private static String partitionKey = System.getenv("TABLE_STORAGE_PARTITION_KEY");
 
@@ -81,15 +82,9 @@ public class NodoReEventToDataStore {
 
         Logger logger = context.getLogger();
 
-        String message = String.format("NodoReEventToDataStore function called at %s with events list size %s and properties size %s", LocalDateTime.now(), reEvents.size(), properties.length);
-        logger.info(message);
-
-
-
-
 		TableClient tableClient = getTableServiceClient().getTableClient(tableName);
-
-        // persist the item
+		String msg = String.format("Persisting %d events",reEvents.size());
+		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
 				List<Document> reEventsWithProperties = new ArrayList<>();
@@ -97,14 +92,9 @@ public class NodoReEventToDataStore {
 					logger.info("processing "+index+" of "+properties.length);
 					Map<String,Object> reEvent = null;
 					reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
-
-					String msg = String.format("NodoReEventToDataStore function called at %s with event id %s rx",
-							LocalDateTime.now(), reEvent.get("unique_id"));
-					logger.info(msg);
 					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
 					reEvent.putAll(properties[index]);
 					reEventsWithProperties.add(new Document(reEvent));
-
 					toTableStorage(tableClient,reEvent);
 				}
 				collection.insertMany(reEventsWithProperties);
