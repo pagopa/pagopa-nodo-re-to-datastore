@@ -33,7 +33,7 @@ on:
       beta:
         required: false
         type: boolean
-        description: deploy beta version on AKS
+        description: deploy beta version
         default: false
   workflow_call:
     inputs:
@@ -47,7 +47,7 @@ on:
       beta:
         required: false
         type: boolean
-        description: deploy beta version on AKS
+        description: deploy beta version
         default: false
 
 permissions:
@@ -118,8 +118,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.release.outputs.version }}
 
-  deploy_aks:
-    name: Deploy on AKS
+  deploy:
+    name: Deploy AZ Functions
     needs: [ setup, release, image ]
     if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     strategy:
@@ -132,7 +132,7 @@ jobs:
     secrets: inherit
 
 #  notify:
-#    needs: [ deploy_aks ]
+#    needs: [ deploy ]
 #    runs-on: ubuntu-latest
 #    name: Notify
 #    if: always()
@@ -141,7 +141,7 @@ jobs:
 #        if: always()
 #        uses: ravsamhq/notify-slack-action@v2
 #        with:
-#          status: ${{ needs.deploy_aks.result }}
+#          status: ${{ needs.deploy.result }}
 #          token: ${{ secrets.GITHUB_TOKEN }}
 #          notify_when: 'failure,skipped'
 #          notification_title: '{workflow} has {status_message}'
