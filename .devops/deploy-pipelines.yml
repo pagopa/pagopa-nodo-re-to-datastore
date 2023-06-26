@@ -8,7 +8,7 @@ parameters:
       - patch
       - buildNumber
       - skip
-    default: patch
+    default: skip
   - name: ENV
     displayName: Target Environment
     type: string
