@@ -80,7 +80,6 @@ stages:
 
           - template: azure-templates/maven-versioning.yml
             parameters:
-              subproject: "${{ parameters.REPOSITORY }}"
               semver: "${{ parameters.SEMVER }}"
 
           - task: Bash@3
@@ -196,7 +195,7 @@ stages:
             inputs:
               command: 'buildAndPush'
               containerRegistry: '$(CONTAINER_REGISTRY)'
-              repository: '${{ parameters.REPOSITORY }}'
+              repository: $(Build.Repository.Name)
               buildContext: './'
               Dockerfile: './Dockerfile'
               tags: |
@@ -221,7 +220,7 @@ stages:
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
               appName: ${{variables.APP_NAME}}
-              imageName: "${{variables.CONTAINER_NAMESPACE}}/${{ parameters.REPOSITORY }}:$(Build.BuildId)"
+              imageName: "${{variables.CONTAINER_NAMESPACE}}:$(Build.BuildId)"
               deployToSlotOrASE: true
               slotName: staging
               resourceGroupName: $(RESOURCE_GROUP)
