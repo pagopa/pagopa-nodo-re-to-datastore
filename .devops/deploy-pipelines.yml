@@ -1,14 +1,4 @@
 parameters:
-  - name: SEMVER
-    displayName: "When packing a release, define the version bump to apply"
-    type: string
-    values:
-      - major
-      - minor
-      - patch
-      - buildNumber
-      - skip
-    default: skip
   - name: ENV
     displayName: Target Environment
     type: string
@@ -17,30 +7,53 @@ parameters:
       - dev
       - uat
       - prod
+  - name: SEMVER
+    displayName: "When packing a release, define the version bump to apply. Use only buildNumber or skip for manual deployment"
+    type: string
+    values:
+      - major
+      - minor
+      - patch
+      - buildNumber
+      - skip
+    default: skip
+  - name: TEST
+    displayName: Run tests
+    type: boolean
+    default: false
+  - name: "FORCE_REPLACE_DOCKER_IMAGE"
+    displayName: "Force the existing docker image to be replaced"
+    type: boolean
+    default: False
+    values:
+      - False
+      - True
 
 variables:
+  imageRepository: '$(IMAGE_REPOSITORY_NAME)'
+
   ${{ if eq(parameters['ENV'], 'dev') }}:
     AZURE_SUBSCRIPTION: $(DEV_AZURE_SUBSCRIPTION)
-    CONTAINER_REGISTRY: $(DEV_CONTAINER_REGISTRY)
-    CONTAINER_NAMESPACE: $(DEV_CONTAINER_NAMESPACE)
-    APP_NAME: "pagopa-d-weu-nodo-re-to-datastore-fn"
+    APP_NAME: $(DEV_WEB_APP_NAME)
+    STAGE: "d"
     RESOURCE_GROUP: 'pagopa-d-weu-nodo-re-to-datastore-rg'
-
+    dockerRegistryServiceConnection: $(DEV_CONTAINER_REGISTRY_SERVICE_CONN)
+    dockerNamespace: $(DEV_CONTAINER_NAMESPACE)
   ${{ if eq(parameters['ENV'], 'uat') }}:
     AZURE_SUBSCRIPTION: $(UAT_AZURE_SUBSCRIPTION)
-    CONTAINER_REGISTRY: $(UAT_CONTAINER_REGISTRY)
-    CONTAINER_NAMESPACE: $(UAT_CONTAINER_NAMESPACE)
-    APP_NAME: "pagopa-u-weu-nodo-re-to-datastore-fn"
+    APP_NAME: $(UAT_WEB_APP_NAME)
+    STAGE: "u"
     RESOURCE_GROUP: 'pagopa-u-weu-nodo-re-to-datastore-rg'
-
+    dockerRegistryServiceConnection: $(UAT_CONTAINER_REGISTRY_SERVICE_CONN)
+    dockerNamespace: $(UAT_CONTAINER_NAMESPACE)
   ${{ if eq(parameters['ENV'], 'prod') }}:
     AZURE_SUBSCRIPTION: $(PROD_AZURE_SUBSCRIPTION)
-    CONTAINER_REGISTRY: $(PROD_CONTAINER_REGISTRY)
-    CONTAINER_NAMESPACE: $(PROD_CONTAINER_NAMESPACE)
-    APP_NAME: "pagopa-p-weu-nodo-re-to-datastore-fn"
+    APP_NAME: $(PROD_WEB_APP_NAME)
+    STAGE: "p"
     RESOURCE_GROUP: 'pagopa-p-weu-nodo-re-to-datastore-rg'
+    dockerRegistryServiceConnection: $(PROD_CONTAINER_REGISTRY_SERVICE_CONN)
+    dockerNamespace: $(PROD_CONTAINER_NAMESPACE)
 
-  # github action on pull request use merge as SourceBranchName but we want to use main branch
   ${{ if eq(variables['Build.SourceBranchName'], 'merge') }}:
     SOURCE_BRANCH: "main" # force to main branch
   ${{ if ne(variables['Build.SourceBranchName'], 'merge') }}:
@@ -59,168 +72,100 @@ pr: none
 pool:
   vmImage: ubuntu-latest
 
+resources:
+  repositories:
+    - repository: pagopaCommons
+      type: github
+      name: pagopa/azure-pipeline-templates
+      ref: refs/tags/v2.10.1
+      endpoint: 'io-azure-devops-github-ro'
+
 stages:
-  # Create a release
-  - stage: release_service
-    # if SEMVER is not 'skip'
-    condition: ne('${{ parameters.SEMVER }}', 'skip')
-    pool:
-      vmImage: "ubuntu-latest"
+
+  # Create a release on GitHub
+  - stage: Release
     jobs:
-      - job: releaseService
+      - job: make_release
         steps:
           - checkout: self
             clean: true
             persistCredentials: true
 
-          - script: |
-              git config --global user.name "$(GIT_USERNAME)"
-              git config --global user.email "$(GIT_EMAIL)"
-            displayName: Set Git global config
+          - ${{ if ne(parameters.SEMVER, 'skip') }}:
+              - template: templates/maven-github-release/template.yaml@pagopaCommons
+                parameters:
+                  release_branch: $(SOURCE_BRANCH)
+                  gitEmail: $(GIT_EMAIL)
+                  gitUsername: $(GIT_USERNAME)
+                  gitHubConnection: $(GITHUB_CONNECTION)
+                  ${{ if ne(parameters.SEMVER, 'skip') }}:
+                    semver: '${{ parameters.SEMVER }}'
+                  ${{ if eq(parameters.SEMVER, 'skip') }}:
+                    semver: 'buildNumber' # this case is impossible due to main condition, but it is necessary to work property
 
-          - template: azure-templates/maven-versioning.yml
+          - template: templates/maven-github-current-version/template.yaml@pagopaCommons
+
+  # Build and Push Docker Image
+  - stage: Build
+    dependsOn: Release
+    variables:
+      current_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
+    jobs:
+      - job: "build"
+        steps:
+          - checkout: self
+            persistCredentials: true
+
+          - script: |
+              git checkout $(sourceBranch)
+
+          - task: Maven@3
+            inputs:
+              mavenPomFile: 'pom.xml'
+              publishJUnitResults: false
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.11'
+              mavenVersionOption: 'Default'
+              mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
+              mavenAuthenticateFeed: false
+              effectivePomSkip: false
+              sonarQubeRunAnalysis: false
+
+          - template: templates/docker-release/template.yaml@pagopaCommons
             parameters:
-              semver: "${{ parameters.SEMVER }}"
-
-          - task: Bash@3
-            name: pomversion
-            inputs:
-              targetType: "inline"
-              script: |
-                version=$(mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
-                echo "##vso[task.setvariable variable=next;isOutput=true]$version"
-              failOnStderr: true
-
-          - script: |
-              echo "Checkout on $(SOURCE_BRANCH)"
-              git checkout $(SOURCE_BRANCH)
-            displayName: Checkout on source branch
-
-          # bump version
-          - script: |
-              git add pom.xml
-              git commit -m "Bump version [skip ci]"
-              git push origin $(SOURCE_BRANCH)
-              git push --tags
-
-          - script: |
-              HEAD_SHA=$(git rev-parse HEAD)
-              TAG="$(pomversion.next)"
-              TITLE="Release $(pomversion.next)"
-              echo "##vso[task.setvariable variable=title]$TITLE"
-              echo "##vso[task.setvariable variable=sha]$HEAD_SHA"
-              echo "##vso[task.setvariable variable=tag]$TAG"
-            displayName: Setting vars
-
-          - script: |
-              echo $(tag)
-              echo $(title)
-              echo $(sha)
-            displayName: Debug step
-
-          # create new release
-          - task: GitHubRelease@0
-            inputs:
-              gitHubConnection: $(GITHUB_CONNECTION)
-              repositoryName: $(Build.Repository.Name)
-              action: create
-              target: $(sha)
-              tagSource: manual
-              tag: $(tag)
-              title: $(title)
-              addChangelog: true
+              CONTAINER_REGISTRY_SERVICE_CONN: $(dockerRegistryServiceConnection)
+              CONTAINER_REGISTRY_FQDN: $(dockerNamespace)
+              DOCKER_IMAGE_NAME: $(imageRepository)
+              DOCKER_IMAGE_TAG: $(current_version)
+              FORCE_REPLACE_DOCKER_IMAGE: ${{ parameters.FORCE_REPLACE_DOCKER_IMAGE }}
 
   # Deploy on Azure
   - stage: deploy
-    condition: in(dependencies.release_service.result, 'Succeeded', 'Skipped')
+    variables:
+      current_version: $[ stageDependencies.Release.make_release.outputs['current_version.value'] ]
+    condition: not(failed('releaseService'))
     pool:
       vmImage: "ubuntu-latest"
     jobs:
       - job: deployJava
         steps:
-          - script: |
-              git config --global user.name "$(GIT_USERNAME)"
-              git config --global user.email "$(GIT_EMAIL)"
-            displayName: Set Git global config
-
-          - script: |
-              echo "Checkout on $(SOURCE_BRANCH)"
-              git checkout $(SOURCE_BRANCH)
-            displayName: Checkout on source branch
-
-          - task: Cache@2
-            inputs:
-              key: 'maven | "$(Agent.OS)" | pom.xml'
-              restoreKeys: |
-                maven | "$(Agent.OS)"
-                maven
-              path: $(MAVEN_CACHE_FOLDER)
-            displayName: Set Maven Cache
-
-          - task: Bash@3
-            name: pomversion
-            inputs:
-              targetType: "inline"
-              script: |
-                version=$(mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout)
-                echo "##vso[task.setvariable variable=next;isOutput=true]$version"
-              failOnStderr: true
-
-          - task: Bash@3
-            # When the maven task is installed, mvn can be used in a script
-            name: mvn_get_version
-            inputs:
-              targetType: "inline"
-              script: |
-                mvn -f pom.xml help:evaluate -Dexpression=project.version -q -DforceStdout
-              failOnStderr: true
-
-          - task: Maven@3
-            displayName: Build Module
-            inputs:
-              mavenPomFile: "pom.xml"
-              mavenOptions: "-Xmx3072m $(MAVEN_OPTS)"
-              mavenVersionOption: 'Default'
-              javaHomeOption: "JDKVersion"
-              jdkVersionOption: "1.11"
-              jdkArchitectureOption: "x64"
-              testResultsFiles: "**/surefire-reports/TEST-*.xml"
-              publishJUnitResults: true
-              effectivePomSkip: false
-              sonarQubeRunAnalysis: false
-              goals: "install"
-
-          - task: Docker@2
-            displayName: Build and push image to container registry
-            inputs:
-              command: 'buildAndPush'
-              containerRegistry: '$(CONTAINER_REGISTRY)'
-              repository: $(Build.Repository.Name)
-              buildContext: './'
-              Dockerfile: './Dockerfile'
-              tags: |
-                $(Build.BuildId)
-                latest
-                $(pomversion.next)
-
-
-          # deploy
+          # deploy fn
           - task: AzureFunctionAppContainer@1
             displayName: Deploy Function App [DEV|UAT]
             condition: in('${{ parameters.ENV }}', 'dev', 'uat')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: ${{variables.APP_NAME}}
-              imageName: "${{variables.CONTAINER_NAMESPACE}}:$(Build.BuildId)"
+              appName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
+              imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
               slotName: production
-
+              resourceGroupName: $(RESOURCE_GROUP)
           - task: AzureFunctionAppContainer@1
-            displayName: Deploy Function App [PROD]
+            displayName: Deploy Function App [PROD] staging
             condition: eq('${{ parameters.ENV }}', 'prod')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: ${{variables.APP_NAME}}
-              imageName: "${{variables.CONTAINER_NAMESPACE}}:$(Build.BuildId)"
+              appName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
+              imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
               deployToSlotOrASE: true
               slotName: staging
               resourceGroupName: $(RESOURCE_GROUP)
@@ -228,8 +173,6 @@ stages:
           - script: |
               echo "##vso[task.setvariable variable=version;isOutput=true]$(pomversion.next)"
             name: dockerTag
-
-  # Prod deploy
   - stage: deployApprovalPROD
     condition: eq('${{ parameters.ENV }}', 'prod')
     dependsOn: deploy
@@ -252,10 +195,10 @@ stages:
         steps:
           # deploy functions - swap
           - task: AzureAppServiceManage@0
-            displayName: Swapping Fn Deploy
+            displayName: Swapping App Service Deploy
             inputs:
               ConnectedServiceName: $(AZURE_SUBSCRIPTION)
-              WebAppName: ${{variables.APP_NAME}}
+              WebAppName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
               ResourceGroupName: $(RESOURCE_GROUP)
               SourceSlot: staging
               SwapWithProduction: true
