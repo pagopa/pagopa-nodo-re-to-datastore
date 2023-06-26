@@ -35,6 +35,7 @@ on:
         type: boolean
         description: deploy beta version
         default: false
+
   workflow_call:
     inputs:
       environment:
