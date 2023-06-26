@@ -23,21 +23,21 @@ variables:
     AZURE_SUBSCRIPTION: $(DEV_AZURE_SUBSCRIPTION)
     CONTAINER_REGISTRY: $(DEV_CONTAINER_REGISTRY)
     CONTAINER_NAMESPACE: $(DEV_CONTAINER_NAMESPACE)
-    APP_NAME: $(DEV_WEB_APP_NAME)
+    APP_NAME: "pagopa-d-weu-nodo-re-to-datastore-fn"
     RESOURCE_GROUP: 'pagopa-d-weu-nodo-re-to-datastore-rg'
 
   ${{ if eq(parameters['ENV'], 'uat') }}:
     AZURE_SUBSCRIPTION: $(UAT_AZURE_SUBSCRIPTION)
     CONTAINER_REGISTRY: $(UAT_CONTAINER_REGISTRY)
     CONTAINER_NAMESPACE: $(UAT_CONTAINER_NAMESPACE)
-    APP_NAME: $(UAT_WEB_APP_NAME)
+    APP_NAME: "pagopa-u-weu-nodo-re-to-datastore-fn"
     RESOURCE_GROUP: 'pagopa-u-weu-nodo-re-to-datastore-rg'
 
   ${{ if eq(parameters['ENV'], 'prod') }}:
     AZURE_SUBSCRIPTION: $(PROD_AZURE_SUBSCRIPTION)
     CONTAINER_REGISTRY: $(PROD_CONTAINER_REGISTRY)
     CONTAINER_NAMESPACE: $(PROD_CONTAINER_NAMESPACE)
-    APP_NAME: $(PROD_WEB_APP_NAME)
+    APP_NAME: "pagopa-p-weu-nodo-re-to-datastore-fn"
     RESOURCE_GROUP: 'pagopa-p-weu-nodo-re-to-datastore-rg'
 
   # github action on pull request use merge as SourceBranchName but we want to use main branch
@@ -131,7 +131,6 @@ stages:
               title: $(title)
               addChangelog: true
 
-
   # Deploy on Azure
   - stage: deploy
     condition: in(dependencies.release_service.result, 'Succeeded', 'Skipped')
@@ -212,8 +211,7 @@ stages:
             condition: in('${{ parameters.ENV }}', 'dev', 'uat')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "pagopa-d-weu-nodo-re-to-datastore-fn"
-              #appName: "${{variables.APP_NAME}}-fn-${{replace(parameters.REPOSITORY, 'reporting', 'gpd')}}"
+              appName: ${{variables.APP_NAME}}
               imageName: "${{variables.CONTAINER_NAMESPACE}}:$(Build.BuildId)"
               slotName: production
 
@@ -222,8 +220,7 @@ stages:
             condition: eq('${{ parameters.ENV }}', 'prod')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "pagopa-p-weu-nodo-re-to-datastore-fn"
-              #appName: "${{variables.APP_NAME}}-fn-${{replace(parameters.REPOSITORY, 'reporting', 'gpd')}}"
+              appName: ${{variables.APP_NAME}}
               imageName: "${{variables.CONTAINER_NAMESPACE}}/${{ parameters.REPOSITORY }}:$(Build.BuildId)"
               deployToSlotOrASE: true
               slotName: staging
@@ -259,8 +256,7 @@ stages:
             displayName: Swapping Fn Deploy
             inputs:
               ConnectedServiceName: $(AZURE_SUBSCRIPTION)
-              WebAppName: "pagopa-p-weu-nodo-re-to-datastore-fn"
-#              WebAppName: "${{variables.APP_NAME}}-fn-${{replace(parameters.REPOSITORY, 'reporting', 'gpd')}}"
+              WebAppName: ${{variables.APP_NAME}}
               ResourceGroupName: $(RESOURCE_GROUP)
               SourceSlot: staging
               SwapWithProduction: true
