@@ -35,7 +35,7 @@ public class NodoReEventToDataStore {
 	private static String idField = "unique-id";
 
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
-	private static String partitionKey = System.getenv("TABLE_STORAGE_PARTITION_KEY");
+	private static String partitionKey = "inserted-timestamp";
 
 	private static MongoClient mongoClient = null;
 
@@ -59,7 +59,7 @@ public class NodoReEventToDataStore {
 
 
 	private void toTableStorage(TableClient tableClient,Map<String,Object> reEvent){
-		TableEntity entity = new TableEntity(partitionKey, (String)reEvent.get(idField));
+		TableEntity entity = new TableEntity((String)reEvent.get(partitionKey), (String)reEvent.get(idField));
 		reEvent.keySet().forEach(d->{
 			entity.addProperty(d,reEvent.get(d));
 		});
