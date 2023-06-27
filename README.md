@@ -1,5 +1,7 @@
 # pagoPA Functions noto-re-to-datastore
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pagopa_pagopa-nodo-re-to-datastore&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pagopa_pagopa-nodo-re-to-datastore)
+
 Java noto-re-to-datastore Azure Function.
 
 ## Function examples

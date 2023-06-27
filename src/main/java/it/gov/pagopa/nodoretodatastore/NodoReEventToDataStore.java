@@ -1,6 +1,9 @@
 package it.gov.pagopa.nodoretodatastore;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.azure.data.tables.TableClient;
+import com.azure.data.tables.TableServiceClient;
+import com.azure.data.tables.TableServiceClientBuilder;
+import com.azure.data.tables.models.TableEntity;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.Cardinality;
@@ -16,11 +19,10 @@ import org.bson.Document;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Azure Functions with Azure Queue trigger.
@@ -30,7 +32,14 @@ public class NodoReEventToDataStore {
      * This function will be invoked when an Event Hub trigger occurs
      */
 
+	private static String idField = "unique-id";
+
+	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
+	private static String partitionKey = "inserted-timestamp";
+
 	private static MongoClient mongoClient = null;
+
+	private static TableServiceClient tableServiceClient = null;
 
 	private static MongoClient getMongoClient(){
 		if(mongoClient==null){
@@ -39,7 +48,23 @@ public class NodoReEventToDataStore {
 		return mongoClient;
 	}
 
+	private static TableServiceClient getTableServiceClient(){
+		if(tableServiceClient==null){
+			tableServiceClient = new TableServiceClientBuilder().connectionString(System.getenv("TABLE_STORAGE_CONN_STRING"))
+					.buildClient();
+			tableServiceClient.createTableIfNotExists(tableName);
+		}
+		return tableServiceClient;
+	}
 
+
+	private void toTableStorage(TableClient tableClient,Map<String,Object> reEvent){
+		TableEntity entity = new TableEntity((String)reEvent.get(partitionKey), (String)reEvent.get(idField));
+		reEvent.keySet().forEach(d->{
+			entity.addProperty(d,reEvent.get(d));
+		});
+		tableClient.createEntity(entity);
+	}
 
     @FunctionName("EventHubNodoReEventProcessor")
     public void processNodoReEvent (
@@ -50,13 +75,6 @@ public class NodoReEventToDataStore {
                     cardinality = Cardinality.MANY)
     		List<String> reEvents,
     		@BindingName(value = "PropertiesArray") Map<String, Object>[] properties,
-//            @CosmosDBOutput(
-//    	            name = "NodoReEventDatastore",
-//    	            databaseName = "nodo_re",
-//    	            collectionName = "events",
-//    	            createIfNotExists = false,
-//                    connectionStringSetting = "COSMOS_CONN_STRING")
-//                    @NonNull OutputBinding<List<ReEvent>> documentdb,
             final ExecutionContext context) {
 
 		MongoDatabase database = getMongoClient().getDatabase(System.getenv("COSMOS_DB_NAME"));
@@ -64,32 +82,23 @@ public class NodoReEventToDataStore {
 
         Logger logger = context.getLogger();
 
-        String message = String.format("NodoReEventToDataStore function called at %s with events list size %s and properties size %s", LocalDateTime.now(), reEvents.size(), properties.length);
-        logger.info(message);
-        
-        // persist the item
+		TableClient tableClient = getTableServiceClient().getTableClient(tableName);
+		String msg = String.format("Persisting %d events",reEvents.size());
+		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
-				List<Document> reEventsWithProperties = IntStream.of(reEvents.size()).mapToObj(i -> {
-					int index = i-1;
+				List<Document> reEventsWithProperties = new ArrayList<>();
+				for(int index=0;index< properties.length;index++){
 					logger.info("processing "+index+" of "+properties.length);
 					Map<String,Object> reEvent = null;
-					try {
-						reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
-					} catch (JsonProcessingException e) {
-						throw new RuntimeException(e);
-					}
-
-					String msg = String.format("NodoReEventToDataStore function called at %s with event id %s rx",
-							LocalDateTime.now(), reEvent.get("unique_id"));
-					logger.info(msg);
+					reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
 					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
 					reEvent.putAll(properties[index]);
-					return new Document(reEvent);
-				}).collect(Collectors.toList());
+					reEventsWithProperties.add(new Document(reEvent));
+					toTableStorage(tableClient,reEvent);
+				}
 				collection.insertMany(reEventsWithProperties);
 
-//    	        documentdb.setValue(reEventsWithProperties);
             } else {
             	throw new AppException("Error during processing - "
             			+ "The size of the events to be processed and their associated properties does not match [reEvents.size="+reEvents.size()+"; properties.length="+properties.length+"]");
