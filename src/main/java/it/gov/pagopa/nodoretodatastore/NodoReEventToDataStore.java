@@ -13,13 +13,11 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import it.gov.pagopa.nodoretodatastore.exception.AppException;
 import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import org.bson.Document;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,14 +107,10 @@ public class NodoReEventToDataStore {
 		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
-
-				List<Document> reEventsWithProperties = new ArrayList<>();
 				for(int index=0;index< properties.length;index++){
-					logger.info("processing "+index+" of "+properties.length);
+					logger.info("processing "+(index+1)+" of "+properties.length);
 					final Map<String,Object> reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
-
 					reEvent.putAll(properties[index]);
-
 					final Map<String,Object> reEventClean = new HashMap<>();
 
 					reEventClean.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
@@ -126,20 +120,16 @@ public class NodoReEventToDataStore {
 						reEventClean.put(newkey,reEvent.get(k));
 					});
 
-					reEventsWithProperties.add(new Document(reEventClean));
 					toTableStorage(logger,tableClient,reEventClean);
+					collection.insertOne(new Document(reEventClean));
 				}
-				collection.insertMany(reEventsWithProperties);
-
+				logger.info("Done processing events");
             } else {
-            	throw new AppException("Error during processing - "
-            			+ "The size of the events to be processed and their associated properties does not match [reEvents.size="+reEvents.size()+"; properties.length="+properties.length+"]");
+				logger.severe("Error processing events, lengths do not match ["+reEvents.size()+","+properties.length+"]");
             }
-        	
         } catch (NullPointerException e) {
             logger.severe("NullPointerException exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         } catch (Exception e) {
-			e.printStackTrace();
             logger.severe("Generic exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         }
 
