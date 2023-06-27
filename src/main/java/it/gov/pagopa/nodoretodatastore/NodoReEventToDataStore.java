@@ -18,7 +18,6 @@ import org.bson.Document;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -74,7 +73,9 @@ public class NodoReEventToDataStore {
 	}
 
 	private String replaceDashWithUppercase(String input) {
-
+		if(!input.contains("-")){
+			return input;
+		}
 		Matcher matcher = replaceDashPattern.matcher(input);
 		StringBuffer sb = new StringBuffer();
 
@@ -110,18 +111,13 @@ public class NodoReEventToDataStore {
 				for(int index=0;index< properties.length;index++){
 					logger.info("processing "+(index+1)+" of "+properties.length);
 					final Map<String,Object> reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
-					reEvent.putAll(properties[index]);
-					final Map<String,Object> reEventClean = new HashMap<>();
-
-					reEventClean.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
-
-					reEvent.keySet().forEach(k->{
-						String newkey = replaceDashWithUppercase(k);
-						reEventClean.put(newkey,reEvent.get(k));
+					properties[index].forEach((p,v)->{
+						String s = replaceDashWithUppercase(p);
+						reEvent.put(s,v);
 					});
-
-					toTableStorage(logger,tableClient,reEventClean);
-					collection.insertOne(new Document(reEventClean));
+					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
+					toTableStorage(logger,tableClient,reEvent);
+					collection.insertOne(new Document(reEvent));
 				}
 				logger.info("Done processing events");
             } else {
