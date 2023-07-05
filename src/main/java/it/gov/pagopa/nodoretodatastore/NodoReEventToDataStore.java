@@ -64,10 +64,8 @@ public class NodoReEventToDataStore {
 		}else if(reEvent.get(idField) == null) {
 			logger.warning("event has no '"+idField+"' field");
 		}else{
-			TableEntity entity = new TableEntity((String)reEvent.get(partitionKey), (String)reEvent.get(idField));
-			reEvent.keySet().forEach(d->{
-				entity.addProperty(d,reEvent.get(d));
-			});
+			TableEntity entity = new TableEntity(((String)reEvent.get(partitionKey)).substring(0,10), (String)reEvent.get(idField));
+			entity.setProperties(reEvent);
 			tableClient.createEntity(entity);
 		}
 	}
