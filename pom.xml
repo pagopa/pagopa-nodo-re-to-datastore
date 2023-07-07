@@ -19,17 +19,17 @@
         <resteasy.version>3.15.3.Final</resteasy.version>
     </properties>
 
-<!--    <dependencyManagement>-->
-<!--        <dependencies>-->
-<!--            <dependency>-->
-<!--                <groupId>com.azure</groupId>-->
-<!--                <artifactId>azure-sdk-bom</artifactId>-->
-<!--                <version>1.2.13</version>-->
-<!--                <type>pom</type>-->
-<!--                <scope>import</scope>-->
-<!--            </dependency>-->
-<!--        </dependencies>-->
-<!--    </dependencyManagement>-->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>1.2.13</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Start Azure -->
@@ -46,7 +46,6 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-data-tables</artifactId>
-            <version>12.3.12</version>
         </dependency>
 
         <!-- End Azure -->
