@@ -5,7 +5,7 @@
 
     <groupId>it.gov.pagopa</groupId>
     <artifactId>nodoretodatastore</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.1-4</version>
     <packaging>jar</packaging>
 
     <name>Nodo RE to datastore Fn</name>
@@ -197,7 +197,7 @@
                     <appSettings>
                         <property>
                             <name>FUNCTIONS_EXTENSION_VERSION</name>
-                            <value>~4</value>
+                            <value>~3</value>
                         </property>
                     </appSettings>
                     <resourceGroup>java-functions-group</resourceGroup>

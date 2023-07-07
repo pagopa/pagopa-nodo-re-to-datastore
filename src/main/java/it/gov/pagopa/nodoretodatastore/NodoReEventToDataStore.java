@@ -13,16 +13,16 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import it.gov.pagopa.nodoretodatastore.exception.AppException;
 import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import org.bson.Document;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Azure Functions with Azure Queue trigger.
@@ -32,10 +32,10 @@ public class NodoReEventToDataStore {
      * This function will be invoked when an Event Hub trigger occurs
      */
 
-	private static String idField = "unique-id";
-
+	private Pattern replaceDashPattern = Pattern.compile("-([a-zA-Z])");
+	private static String idField = "uniqueId";
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
-	private static String partitionKey = "inserted-timestamp";
+	private static String partitionKey = "insertedTimestamp";
 
 	private static MongoClient mongoClient = null;
 
@@ -58,12 +58,31 @@ public class NodoReEventToDataStore {
 	}
 
 
-	private void toTableStorage(TableClient tableClient,Map<String,Object> reEvent){
-		TableEntity entity = new TableEntity((String)reEvent.get(partitionKey), (String)reEvent.get(idField));
-		reEvent.keySet().forEach(d->{
-			entity.addProperty(d,reEvent.get(d));
-		});
-		tableClient.createEntity(entity);
+	private void toTableStorage(Logger logger,TableClient tableClient,Map<String,Object> reEvent){
+		if(reEvent.get(partitionKey) == null){
+			logger.warning("event has no '"+partitionKey+"' field");
+		}else if(reEvent.get(idField) == null) {
+			logger.warning("event has no '"+idField+"' field");
+		}else{
+			TableEntity entity = new TableEntity(((String)reEvent.get(partitionKey)).substring(0,10), (String)reEvent.get(idField));
+			entity.setProperties(reEvent);
+			tableClient.createEntity(entity);
+		}
+	}
+
+	private String replaceDashWithUppercase(String input) {
+		if(!input.contains("-")){
+			return input;
+		}
+		Matcher matcher = replaceDashPattern.matcher(input);
+		StringBuffer sb = new StringBuffer();
+
+		while (matcher.find()) {
+			matcher.appendReplacement(sb, matcher.group(1).toUpperCase());
+		}
+		matcher.appendTail(sb);
+
+		return sb.toString();
 	}
 
     @FunctionName("EventHubNodoReEventProcessor")
@@ -87,27 +106,24 @@ public class NodoReEventToDataStore {
 		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
-				List<Document> reEventsWithProperties = new ArrayList<>();
 				for(int index=0;index< properties.length;index++){
-					logger.info("processing "+index+" of "+properties.length);
-					Map<String,Object> reEvent = null;
-					reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
+					logger.info("processing "+(index+1)+" of "+properties.length);
+					final Map<String,Object> reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
+					properties[index].forEach((p,v)->{
+						String s = replaceDashWithUppercase(p);
+						reEvent.put(s,v);
+					});
 					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
-					reEvent.putAll(properties[index]);
-					reEventsWithProperties.add(new Document(reEvent));
-					toTableStorage(tableClient,reEvent);
+					toTableStorage(logger,tableClient,reEvent);
+					collection.insertOne(new Document(reEvent));
 				}
-				collection.insertMany(reEventsWithProperties);
-
+				logger.info("Done processing events");
             } else {
-            	throw new AppException("Error during processing - "
-            			+ "The size of the events to be processed and their associated properties does not match [reEvents.size="+reEvents.size()+"; properties.length="+properties.length+"]");
+				logger.severe("Error processing events, lengths do not match ["+reEvents.size()+","+properties.length+"]");
             }
-        	
         } catch (NullPointerException e) {
             logger.severe("NullPointerException exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         } catch (Exception e) {
-			e.printStackTrace();
             logger.severe("Generic exception on cosmos nodo-re-events msg ingestion at "+ LocalDateTime.now()+ " : " + e.getMessage());
         }
 
