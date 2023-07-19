@@ -35,7 +35,8 @@ public class NodoReEventToDataStore {
 	private Pattern replaceDashPattern = Pattern.compile("-([a-zA-Z])");
 	private static String idField = "uniqueId";
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
-	private static String partitionKey = "insertedTimestamp";
+	private static String insertedTimestamp = "insertedTimestamp";
+	private static String partitionKey = "PartitionKey";
 
 	private static MongoClient mongoClient = null;
 
@@ -59,12 +60,10 @@ public class NodoReEventToDataStore {
 
 
 	private void toTableStorage(Logger logger,TableClient tableClient,Map<String,Object> reEvent){
-		if(reEvent.get(partitionKey) == null){
-			logger.warning("event has no '"+partitionKey+"' field");
-		}else if(reEvent.get(idField) == null) {
-			logger.warning("event has no '"+idField+"' field");
-		}else{
-			TableEntity entity = new TableEntity(((String)reEvent.get(partitionKey)).substring(0,10), (String)reEvent.get(idField));
+		if(reEvent.get(idField) == null) {
+			logger.warning("event has no '" + idField + "' field");
+		} else {
+			TableEntity entity = new TableEntity((String) reEvent.get(partitionKey), (String)reEvent.get(idField));
 			entity.setProperties(reEvent);
 			tableClient.createEntity(entity);
 		}
@@ -113,7 +112,10 @@ public class NodoReEventToDataStore {
 						String s = replaceDashWithUppercase(p);
 						reEvent.put(s,v);
 					});
-					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
+					reEvent.put("timestamp", ZonedDateTime.now().toInstant().toEpochMilli());
+
+					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,10) : "NA";
+					reEvent.put(partitionKey, partitionKeyValue);
 					toTableStorage(logger,tableClient,reEvent);
 					collection.insertOne(new Document(reEvent));
 				}
