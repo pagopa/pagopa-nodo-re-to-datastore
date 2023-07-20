@@ -114,7 +114,7 @@ public class NodoReEventToDataStore {
 					});
 					reEvent.put("timestamp", ZonedDateTime.now().toInstant().toEpochMilli());
 
-					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,10) : "NA";
+					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
 					reEvent.put(partitionKey, partitionKeyValue);
 					toTableStorage(logger,tableClient,reEvent);
 					collection.insertOne(new Document(reEvent));
