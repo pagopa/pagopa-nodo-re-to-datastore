@@ -16,6 +16,8 @@ import com.mongodb.client.MongoDatabase;
 import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import org.bson.Document;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 /**
  * Azure Functions with Azure Queue trigger.
@@ -37,6 +41,7 @@ public class NodoReEventToDataStore {
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
 	private static String insertedTimestamp = "insertedTimestamp";
 	private static String partitionKey = "PartitionKey";
+	private static String payloadField = "payload";
 
 	private static MongoClient mongoClient = null;
 
@@ -84,6 +89,27 @@ public class NodoReEventToDataStore {
 		return sb.toString();
 	}
 
+	private void zipPayload(Logger logger,Map<String,Object> reEvent){
+		if(reEvent.get(payloadField)!=null){
+			try {
+				byte[] data;
+				if(reEvent.get(payloadField) instanceof String){
+					data = ((String)reEvent.get(payloadField)).getBytes(StandardCharsets.UTF_8);
+				}else{
+					data = ((byte[])reEvent.get(payloadField));
+				}
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				Deflater deflater = new Deflater();
+				DeflaterOutputStream dos = new DeflaterOutputStream(baos, deflater);
+				dos.write(data);
+				dos.close();
+				reEvent.put(payloadField,baos.toByteArray());
+			} catch (Exception e) {
+				logger.severe(e.getMessage());
+			}
+		}
+	}
+
     @FunctionName("EventHubNodoReEventProcessor")
     public void processNodoReEvent (
             @EventHubTrigger(
@@ -116,6 +142,9 @@ public class NodoReEventToDataStore {
 
 					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
 					reEvent.put(partitionKey, partitionKeyValue);
+
+					zipPayload(logger,reEvent);
+
 					toTableStorage(logger,tableClient,reEvent);
 					collection.insertOne(new Document(reEvent));
 				}
