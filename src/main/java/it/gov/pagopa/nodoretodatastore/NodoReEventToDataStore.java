@@ -92,12 +92,7 @@ public class NodoReEventToDataStore {
 	private void zipPayload(Logger logger,Map<String,Object> reEvent){
 		if(reEvent.get(payloadField)!=null){
 			try {
-				byte[] data;
-				if(reEvent.get(payloadField) instanceof String){
-					data = ((String)reEvent.get(payloadField)).getBytes(StandardCharsets.UTF_8);
-				}else{
-					data = ((byte[])reEvent.get(payloadField));
-				}
+				byte[] data = ((String)reEvent.get(payloadField)).getBytes(StandardCharsets.UTF_8);
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				Deflater deflater = new Deflater();
 				DeflaterOutputStream dos = new DeflaterOutputStream(baos, deflater);
