@@ -155,7 +155,7 @@ stages:
             condition: in('${{ parameters.ENV }}', 'dev', 'uat')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
+              appName: "${{variables.APP_NAME}}-nodo-re-fn"
               imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
               slotName: production
               resourceGroupName: $(RESOURCE_GROUP)
@@ -164,7 +164,7 @@ stages:
             condition: eq('${{ parameters.ENV }}', 'prod')
             inputs:
               azureSubscription: $(AZURE_SUBSCRIPTION)
-              appName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
+              appName: "${{variables.APP_NAME}}-nodo-re-fn"
               imageName: "${{variables.dockerNamespace}}/${{ variables.imageRepository }}:latest"
               deployToSlotOrASE: true
               slotName: staging
@@ -198,7 +198,7 @@ stages:
             displayName: Swapping App Service Deploy
             inputs:
               ConnectedServiceName: $(AZURE_SUBSCRIPTION)
-              WebAppName: "${{variables.APP_NAME}}-nodo-re-to-datastore-fn"
+              WebAppName: "${{variables.APP_NAME}}-nodo-re-fn"
               ResourceGroupName: $(RESOURCE_GROUP)
               SourceSlot: staging
               SwapWithProduction: true

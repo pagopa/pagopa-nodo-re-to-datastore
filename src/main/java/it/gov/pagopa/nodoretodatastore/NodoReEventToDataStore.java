@@ -16,6 +16,8 @@ import com.mongodb.client.MongoDatabase;
 import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import org.bson.Document;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 /**
  * Azure Functions with Azure Queue trigger.
@@ -35,7 +39,9 @@ public class NodoReEventToDataStore {
 	private Pattern replaceDashPattern = Pattern.compile("-([a-zA-Z])");
 	private static String idField = "uniqueId";
 	private static String tableName = System.getenv("TABLE_STORAGE_TABLE_NAME");
-	private static String partitionKey = "insertedTimestamp";
+	private static String insertedTimestamp = "insertedTimestamp";
+	private static String partitionKey = "PartitionKey";
+	private static String payloadField = "payload";
 
 	private static MongoClient mongoClient = null;
 
@@ -59,12 +65,10 @@ public class NodoReEventToDataStore {
 
 
 	private void toTableStorage(Logger logger,TableClient tableClient,Map<String,Object> reEvent){
-		if(reEvent.get(partitionKey) == null){
-			logger.warning("event has no '"+partitionKey+"' field");
-		}else if(reEvent.get(idField) == null) {
-			logger.warning("event has no '"+idField+"' field");
-		}else{
-			TableEntity entity = new TableEntity(((String)reEvent.get(partitionKey)).substring(0,10), (String)reEvent.get(idField));
+		if(reEvent.get(idField) == null) {
+			logger.warning("event has no '" + idField + "' field");
+		} else {
+			TableEntity entity = new TableEntity((String) reEvent.get(partitionKey), (String)reEvent.get(idField));
 			entity.setProperties(reEvent);
 			tableClient.createEntity(entity);
 		}
@@ -83,6 +87,22 @@ public class NodoReEventToDataStore {
 		matcher.appendTail(sb);
 
 		return sb.toString();
+	}
+
+	private void zipPayload(Logger logger,Map<String,Object> reEvent){
+		if(reEvent.get(payloadField)!=null){
+			try {
+				byte[] data = ((String)reEvent.get(payloadField)).getBytes(StandardCharsets.UTF_8);
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				Deflater deflater = new Deflater();
+				DeflaterOutputStream dos = new DeflaterOutputStream(baos, deflater);
+				dos.write(data);
+				dos.close();
+				reEvent.put(payloadField,baos.toByteArray());
+			} catch (Exception e) {
+				logger.severe(e.getMessage());
+			}
+		}
 	}
 
     @FunctionName("EventHubNodoReEventProcessor")
@@ -113,7 +133,13 @@ public class NodoReEventToDataStore {
 						String s = replaceDashWithUppercase(p);
 						reEvent.put(s,v);
 					});
-					reEvent.put("timestamp",ZonedDateTime.now().toInstant().toEpochMilli());
+					reEvent.put("timestamp", ZonedDateTime.now().toInstant().toEpochMilli());
+
+					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
+					reEvent.put(partitionKey, partitionKeyValue);
+
+					zipPayload(logger,reEvent);
+
 					toTableStorage(logger,tableClient,reEvent);
 					collection.insertOne(new Document(reEvent));
 				}
