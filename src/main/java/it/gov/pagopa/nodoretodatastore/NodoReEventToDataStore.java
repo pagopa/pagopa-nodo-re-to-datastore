@@ -126,8 +126,8 @@ public class NodoReEventToDataStore {
 		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
-				for(int index=0;index< properties.length;index++){
-					logger.info("processing "+(index+1)+" of "+properties.length);
+				for(int index=0; index< properties.length; index++) {
+					// logger.info("processing "+(index+1)+" of "+properties.length);
 					final Map<String,Object> reEvent = ObjectMapperUtils.readValue(reEvents.get(index), Map.class);
 					properties[index].forEach((p,v)->{
 						String s = replaceDashWithUppercase(p);
