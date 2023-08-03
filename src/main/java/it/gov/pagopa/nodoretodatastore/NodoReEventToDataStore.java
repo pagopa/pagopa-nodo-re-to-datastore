@@ -148,7 +148,7 @@ public class NodoReEventToDataStore {
 					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
 					reEvent.put(partitionKey, partitionKeyValue);
 
-					zipPayload(logger,reEvent);
+//					zipPayload(logger,reEvent);
 
 //					addToBatch(logger,partitionEvents,reEvent);
 					eventsToPersistCosmos.add(new Document(reEvent));
