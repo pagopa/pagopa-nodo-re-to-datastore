@@ -133,7 +133,7 @@ public class NodoReEventToDataStore {
 		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
-				Map<String,List<TableTransactionAction>> partitionEvents = new HashMap<>();
+//				Map<String,List<TableTransactionAction>> partitionEvents = new HashMap<>();
 				List<Document> eventsToPersistCosmos = new ArrayList<>();
 
 				for(int index=0; index< properties.length; index++) {
@@ -150,18 +150,18 @@ public class NodoReEventToDataStore {
 
 					zipPayload(logger,reEvent);
 
-					addToBatch(logger,partitionEvents,reEvent);
+//					addToBatch(logger,partitionEvents,reEvent);
 					eventsToPersistCosmos.add(new Document(reEvent));
 
 				}
 
-				partitionEvents.forEach((pe,values)->{
-					try {
-						tableClient.submitTransaction(values);
-					} catch (Throwable t){
-						logger.severe("Could not save on tableStorage,partition "+pe+", "+values.size()+" rows,error:"+ t.toString());
-					}
-				});
+//				partitionEvents.forEach((pe,values)->{
+//					try {
+//						tableClient.submitTransaction(values);
+//					} catch (Throwable t){
+//						logger.severe("Could not save on tableStorage,partition "+pe+", "+values.size()+" rows,error:"+ t.toString());
+//					}
+//				});
 
 				try {
 					collection.insertMany(eventsToPersistCosmos);
