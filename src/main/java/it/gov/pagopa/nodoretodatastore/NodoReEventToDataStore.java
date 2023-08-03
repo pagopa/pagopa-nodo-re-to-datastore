@@ -148,7 +148,6 @@ public class NodoReEventToDataStore {
 					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
 					reEvent.put(partitionKey, partitionKeyValue);
 
-					logger.info("removed payload!");
 					reEvent.put(payloadField, null);
 //					zipPayload(logger,reEvent);
 
@@ -165,9 +164,9 @@ public class NodoReEventToDataStore {
 //				});
 
 				try {
-					logger.info("to write");
+					long start = ZonedDateTime.now().toInstant().toEpochMilli();
 					collection.insertMany(eventsToPersistCosmos);
-					logger.info("written");
+					logger.info("written " + (ZonedDateTime.now().toInstant().toEpochMilli() - start));
 				} catch (Throwable t){
 					logger.severe("Could not save on cosmos "+eventsToPersistCosmos.size()+",error:"+ t.toString());
 				}
