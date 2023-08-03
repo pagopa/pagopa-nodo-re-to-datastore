@@ -6,9 +6,9 @@
   },
   "extensions": {
     "eventHubs": {
-      "maxEventBatchSize" : 90,
-      "batchCheckpointFrequency" : 45,
-      "prefetchCount" : 900,
+      "maxEventBatchSize" : 20,
+      "batchCheckpointFrequency" : 5,
+      "prefetchCount" : 100,
       "initialOffsetOptions" : {
         "type" : "fromStart"
       },
