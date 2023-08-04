@@ -144,8 +144,9 @@ public class NodoReEventToDataStore {
 					});
 					reEvent.put("timestamp", ZonedDateTime.now().toInstant().toEpochMilli());
 
-					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
-					reEvent.put(partitionKey, partitionKeyValue);
+//					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
+
+					reEvent.put(partitionKey, reEvent.get("uniqueId"));
 
 					zipPayload(logger,reEvent);
 
