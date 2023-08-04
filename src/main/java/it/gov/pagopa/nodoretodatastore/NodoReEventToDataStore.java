@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -148,8 +147,7 @@ public class NodoReEventToDataStore {
 					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
 					reEvent.put(partitionKey, partitionKeyValue);
 
-					reEvent.put(payloadField, null);
-//					zipPayload(logger,reEvent);
+					zipPayload(logger,reEvent);
 
 //					addToBatch(logger,partitionEvents,reEvent);
 					eventsToPersistCosmos.add(new Document(reEvent));
