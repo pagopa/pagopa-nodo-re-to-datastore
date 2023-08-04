@@ -5,7 +5,7 @@
 
     <groupId>it.gov.pagopa</groupId>
     <artifactId>nodoretodatastore</artifactId>
-    <version>0.1.1-7</version>
+    <version>0.1.1-8</version>
     <packaging>jar</packaging>
 
     <name>Nodo RE to datastore Fn</name>
