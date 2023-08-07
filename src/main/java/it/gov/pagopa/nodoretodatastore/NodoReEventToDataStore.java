@@ -1,22 +1,14 @@
 package it.gov.pagopa.nodoretodatastore;
 
-import com.azure.data.tables.TableClient;
-import com.azure.data.tables.TableServiceClient;
-import com.azure.data.tables.TableServiceClientBuilder;
-import com.azure.data.tables.models.TableEntity;
-import com.azure.data.tables.models.TableTransactionAction;
-import com.azure.data.tables.models.TableTransactionActionType;
 import com.microsoft.azure.functions.ExecutionContext;
+import com.microsoft.azure.functions.OutputBinding;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.Cardinality;
+import com.microsoft.azure.functions.annotation.CosmosDBOutput;
 import com.microsoft.azure.functions.annotation.EventHubTrigger;
 import com.microsoft.azure.functions.annotation.FunctionName;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
-import org.bson.Document;
+import lombok.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -46,39 +38,39 @@ public class NodoReEventToDataStore {
 	private static String partitionKey = "PartitionKey";
 	private static String payloadField = "payload";
 
-	private static MongoClient mongoClient = null;
+//	private static MongoClient mongoClient = null;
 
-	private static TableServiceClient tableServiceClient = null;
+//	private static TableServiceClient tableServiceClient = null;
 
-	private static MongoClient getMongoClient(){
-		if(mongoClient==null){
-			mongoClient = new MongoClient(new MongoClientURI(System.getenv("COSMOS_CONN_STRING")));
-		}
-		return mongoClient;
-	}
+//	private static MongoClient getMongoClient(){
+//		if(mongoClient==null){
+//			mongoClient = new MongoClient(new MongoClientURI(System.getenv("COSMOS_CONN_STRING")));
+//		}
+//		return mongoClient;
+//	}
 
-	private static TableServiceClient getTableServiceClient(){
-		if(tableServiceClient==null){
-			tableServiceClient = new TableServiceClientBuilder().connectionString(System.getenv("TABLE_STORAGE_CONN_STRING"))
-					.buildClient();
-			tableServiceClient.createTableIfNotExists(tableName);
-		}
-		return tableServiceClient;
-	}
+//	private static TableServiceClient getTableServiceClient(){
+//		if(tableServiceClient==null){
+//			tableServiceClient = new TableServiceClientBuilder().connectionString(System.getenv("TABLE_STORAGE_CONN_STRING"))
+//					.buildClient();
+//			tableServiceClient.createTableIfNotExists(tableName);
+//		}
+//		return tableServiceClient;
+//	}
 
 
-	private void addToBatch(Logger logger, Map<String,List<TableTransactionAction>> partitionEvents, Map<String,Object> reEvent){
-		if(reEvent.get(idField) == null) {
-			logger.warning("event has no '" + idField + "' field");
-		} else {
-			TableEntity entity = new TableEntity((String) reEvent.get(partitionKey), (String)reEvent.get(idField));
-			entity.setProperties(reEvent);
-			if(!partitionEvents.containsKey(entity.getPartitionKey())){
-				partitionEvents.put(entity.getPartitionKey(),new ArrayList<TableTransactionAction>());
-			}
-			partitionEvents.get(entity.getPartitionKey()).add(new TableTransactionAction(TableTransactionActionType.UPSERT_REPLACE,entity));
-		}
-	}
+//	private void addToBatch(Logger logger, Map<String,List<TableTransactionAction>> partitionEvents, Map<String,Object> reEvent){
+//		if(reEvent.get(idField) == null) {
+//			logger.warning("event has no '" + idField + "' field");
+//		} else {
+//			TableEntity entity = new TableEntity((String) reEvent.get(partitionKey), (String)reEvent.get(idField));
+//			entity.setProperties(reEvent);
+//			if(!partitionEvents.containsKey(entity.getPartitionKey())){
+//				partitionEvents.put(entity.getPartitionKey(),new ArrayList<TableTransactionAction>());
+//			}
+//			partitionEvents.get(entity.getPartitionKey()).add(new TableTransactionAction(TableTransactionActionType.UPSERT_REPLACE,entity));
+//		}
+//	}
 
 	private String replaceDashWithUppercase(String input) {
 		if(!input.contains("-")){
@@ -120,20 +112,24 @@ public class NodoReEventToDataStore {
                     cardinality = Cardinality.MANY)
     		List<String> reEvents,
     		@BindingName(value = "PropertiesArray") Map<String, Object>[] properties,
+			@CosmosDBOutput(
+					name = "NodoReEventToDataStore",
+					databaseName = "nodo_re",
+					containerName = "events",
+					createIfNotExists = false,
+					connection = "COSMOS_CONN_STRING")
+			@NonNull OutputBinding<List<Object>> documentdb,
             final ExecutionContext context) {
 
-		MongoDatabase database = getMongoClient().getDatabase(System.getenv("COSMOS_DB_NAME"));
-		MongoCollection<Document> collection = database.getCollection(System.getenv("COSMOS_DB_COLLECTION_NAME"));
+		Logger logger = context.getLogger();
 
-        Logger logger = context.getLogger();
-
-		TableClient tableClient = getTableServiceClient().getTableClient(tableName);
+//		TableClient tableClient = getTableServiceClient().getTableClient(tableName);
 		String msg = String.format("Persisting %d events",reEvents.size());
 		logger.info(msg);
         try {
         	if (reEvents.size() == properties.length) {
 //				Map<String,List<TableTransactionAction>> partitionEvents = new HashMap<>();
-				List<Document> eventsToPersistCosmos = new ArrayList<>();
+				List<Object> eventsToPersistCosmos = new ArrayList<>();
 
 				for(int index=0; index< properties.length; index++) {
 					// logger.info("processing "+(index+1)+" of "+properties.length);
@@ -156,7 +152,7 @@ public class NodoReEventToDataStore {
 					zipPayload(logger,reEvent);
 
 //					addToBatch(logger,partitionEvents,reEvent);
-					eventsToPersistCosmos.add(new Document(reEvent));
+					eventsToPersistCosmos.add(reEvent);
 				}
 
 //				partitionEvents.forEach((pe,values)->{
@@ -169,7 +165,8 @@ public class NodoReEventToDataStore {
 
 				try {
 					long start = ZonedDateTime.now().toInstant().toEpochMilli();
-					collection.insertMany(eventsToPersistCosmos);
+//					collection.insertMany(eventsToPersistCosmos);
+					documentdb.setValue(eventsToPersistCosmos);
 					logger.info("written " + (ZonedDateTime.now().toInstant().toEpochMilli() - start));
 				} catch (Throwable t){
 					logger.severe("Could not save on cosmos "+eventsToPersistCosmos.size()+",error:"+ t.toString());
