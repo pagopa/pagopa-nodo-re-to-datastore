@@ -145,10 +145,12 @@ public class NodoReEventToDataStore {
 					reEvent.put("timestamp", ZonedDateTime.now().toInstant().toEpochMilli());
 
 //					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,13) : "NA";
+
 					String partitionKeyValue = reEvent.get(insertedTimestamp) != null ? ((String)reEvent.get(insertedTimestamp)).substring(0,10) : "NA";
 					String idDominio = reEvent.get("idDominio") != null ? reEvent.get("idDominio").toString() : "NA";
 					String idPsp = reEvent.get("psp") != null ? reEvent.get("psp").toString() : "NA";
-					partitionKeyValue += idDominio + "-" + idPsp;
+					partitionKeyValue += "-" + idDominio + "-" + idPsp;
+
 					reEvent.put(partitionKey, partitionKeyValue);
 
 					zipPayload(logger,reEvent);
