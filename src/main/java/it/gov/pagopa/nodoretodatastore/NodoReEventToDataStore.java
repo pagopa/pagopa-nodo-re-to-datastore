@@ -148,6 +148,7 @@ public class NodoReEventToDataStore {
 					partitionKeyValue += "-" + idDominio + "-" + idPsp;
 
 					reEvent.put(partitionKey, partitionKeyValue);
+					reEvent.put("id", reEvent.get("uniqueId"));
 
 					zipPayload(logger,reEvent);
 
