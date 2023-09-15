@@ -11,6 +11,7 @@ import it.gov.pagopa.nodoretodatastore.util.ObjectMapperUtils;
 import lombok.NonNull;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +87,14 @@ public class NodoReEventToDataStore {
 
 					reEvent.put("id", reEvent.get(uniqueIdField));
 
-					String insertedDateValue = reEvent.get(insertedTimestampField) != null ? ((String)reEvent.get(insertedTimestampField)).substring(0, 10) : NA;
+					String insertedDateValue = null;
+					if(reEvent.get(insertedTimestampField) != null){
+						String utcInserted = LocalDateTime.parse(reEvent.get(insertedTimestampField).toString()).atZone(ZoneId.of("Europe/Rome")).toInstant().toString();
+						reEvent.put(insertedTimestampField, utcInserted);
+						insertedDateValue = utcInserted.substring(0,10);
+					} else{
+						insertedDateValue = NA;
+					}
 					reEvent.put(insertedDateField, insertedDateValue);
 
 					String idDominio = reEvent.get(idDominioField) != null ? reEvent.get(idDominioField).toString() : NA;
