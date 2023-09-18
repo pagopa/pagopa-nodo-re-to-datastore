@@ -75,12 +75,12 @@ jobs:
       # Set Semvar
       - run: echo "SEMVER=patch" >> $GITHUB_ENV
 
-      - if: ${{ ( github.event.pull_request.merged && (github.event.inputs.environment == 'uat' || github.event.inputs.environment == 'prod') && ( contains(github.event.pull_request.labels.*.name, 'breaking-change') || contains(github.event.pull_request.labels.*.name, 'new_release') || contains(github.event.pull_request.labels.*.name, 'skip') ) }}
+      - if: ${{ ( github.event.pull_request.merged && (github.event.inputs.environment == 'uat' || github.event.inputs.environment == 'prod') && ( contains(github.event.pull_request.labels.*.name, 'breaking-change') || contains(github.event.pull_request.labels.*.name, 'new-release') || contains(github.event.pull_request.labels.*.name, 'ignore-for-release') ) }}
         run: |
           echo "❌ UAT and PROD accept only \"patch\" or \"promote\""
           exit 1
           
-      - if: ${{ github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'skip') }}
+      - if: ${{ github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'ignore-for-release') }}
         run: echo "SEMVER=skip" >> $GITHUB_ENV
 
       - if: ${{ (github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'new-release')) }}

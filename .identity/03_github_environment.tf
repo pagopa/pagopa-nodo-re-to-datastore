@@ -58,7 +58,6 @@ resource "github_actions_environment_secret" "github_environment_runner_secrets"
 # ENV Variables #
 #################
 
-
 resource "github_actions_environment_variable" "github_environment_runner_variables" {
   for_each      = local.env_variables
   repository    = local.github.repository
@@ -79,3 +78,23 @@ resource "github_actions_secret" "repo_secrets" {
   plaintext_value = each.value
 }
 
+############
+## Labels ##
+############
+resource "github_issue_label" "breaking_change" {
+  repository = local.github.repository
+  name       = "breaking-change"
+  color      = "FF0000"
+}
+
+resource "github_issue_label" "new_release" {
+  repository = local.github.repository
+  name       = "new-release"
+  color      = "FF0000"
+}
+
+resource "github_issue_label" "ignore_for_release" {
+  repository = local.github.repository
+  name       = "ignore-for-release"
+  color      = "008000"
+}
