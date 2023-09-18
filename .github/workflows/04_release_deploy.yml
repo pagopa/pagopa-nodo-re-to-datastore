@@ -1,4 +1,4 @@
-name: Release And Deploy Azure Function
+name: Release And Deploy
 
 # Controls when the workflow will run
 on:
@@ -28,11 +28,16 @@ on:
           - buildNumber
           - skip
         default: skip
-      beta:
-        required: false
-        type: boolean
-        description: Deploy function on Azure in beta version
-        default: false
+
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      semver:
+        required: true
+        type: string
+        default: skip
 
 permissions:
   packages: write
@@ -87,8 +92,7 @@ jobs:
         with:
           semver: ${{ needs.setup.outputs.semver }}
           github_token: ${{ secrets.BOT_TOKEN_GITHUB }}
-          beta: ${{ inputs.beta }}
-          skip_ci: ${{ inputs.beta }}
+          beta: false
 
   build-and-push:
     needs: [ setup, release ]
