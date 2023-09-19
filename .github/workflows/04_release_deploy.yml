@@ -75,7 +75,7 @@ jobs:
       # Set Semver
       - run: echo "SEMVER=patch" >> $GITHUB_ENV
 
-      - if: ${{ ( github.event.pull_request.merged && (github.event.inputs.environment == 'uat' || github.event.inputs.environment == 'prod') && ( contains(github.event.pull_request.labels.*.name, 'breaking-change') || contains(github.event.pull_request.labels.*.name, 'new-release') || contains(github.event.pull_request.labels.*.name, 'ignore-for-release') ) }}
+      - if: ${{ github.event.pull_request.merged && ( github.event.inputs.environment == 'uat' || github.event.inputs.environment == 'prod') && ( contains(github.event.pull_request.labels.*.name, 'breaking-change') || contains(github.event.pull_request.labels.*.name, 'new-release') || contains(github.event.pull_request.labels.*.name, 'ignore-for-release') ) }}
         run: |
           echo "❌ UAT and PROD accept only \"patch\" or \"promote\""
           exit 1
@@ -111,7 +111,7 @@ jobs:
       - id: get_semver
         name: Set Output
         run: echo "semver=${{env.SEMVER}}" >> $GITHUB_OUTPUT
-
+        
       # Set Environment
       - if: ${{ github.event.inputs.environment == null || github.event.inputs.environment == 'dev' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
