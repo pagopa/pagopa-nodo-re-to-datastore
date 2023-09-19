@@ -18,7 +18,6 @@ on:
           - dev
           - uat
           - prod
-          - all
       semver:
         required: false
         type: choice
@@ -44,6 +43,7 @@ on:
       environment:
         required: true
         type: string
+
       semver:
         required: true
         type: string
@@ -55,9 +55,6 @@ permissions:
   issues: write
   id-token: write
   actions: read
-
-env:
-  ENV_SHORT: ${{ (contains(github.event.inputs.environment,'dev') && 'd') || (contains(github.event.inputs.environment, 'uat') && 'u') || (contains(github.event.inputs.environment,'prod') && 'p') }}
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -104,12 +101,6 @@ jobs:
       - if: ${{ inputs.version == 'promote' || inputs.version == 'skip' }}
         run: echo "SEMVER=skip" >> $GITHUB_ENV
 
-      # if deploy 'all' then skip semver
-      - if: ${{ github.event.inputs.environment == 'all' }}
-        run: |
-          echo "All environment selected then skip semver generation"
-          echo "SEMVER=skip" >> $GITHUB_ENV
-
       - id: get_semver
         name: Set Output
         run: echo "semver=${{env.SEMVER}}" >> $GITHUB_OUTPUT
@@ -129,8 +120,7 @@ jobs:
 
       - id: output
         name: Set Output
-        run: |
-          echo "environment=${{env.ENVIRONMENT}}" >> $GITHUB_OUTPUT
+        run: echo "environment=${{env.ENVIRONMENT}}" >> $GITHUB_OUTPUT
 
   release:
     name: Create a New Release
@@ -168,7 +158,6 @@ jobs:
     needs: [ setup, release, build-and-push ]
     runs-on: ubuntu-latest
     if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v3
@@ -182,8 +171,9 @@ jobs:
 
       - name: Set env variables
         run: |
-          echo "RESOURCE_GROUP=pagopa-${{env.ENV_SHORT}}-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
-          echo "APP_NAME=pagopa-${{env.ENV_SHORT}}-weu-nodo-re-fn" >> $GITHUB_ENV
+          ENV_SHORT=$(echo ${{needs.setup.outputs.environment}} | cut -c1-1)
+          echo "RESOURCE_GROUP=pagopa-$ENV_SHORT-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
+          echo "APP_NAME=pagopa-$ENV_SHORT-weu-nodo-re-fn" >> $GITHUB_ENV
           echo "REGISTRY_IMAGE=ghcr.io/pagopa/pagopa-nodo-re-to-datastore:${{needs.release.outputs.version}}" >> $GITHUB_ENV
 
 
