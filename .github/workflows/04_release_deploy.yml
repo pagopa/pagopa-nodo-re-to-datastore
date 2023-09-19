@@ -171,8 +171,9 @@ jobs:
 
       - name: Set env variables
         run: |
-          echo "RESOURCE_GROUP=pagopa-${{needs.setup.outputs.environment:0:1}}-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
-          echo "APP_NAME=pagopa-${{needs.setup.outputs.environment:0:1}}-weu-nodo-re-fn" >> $GITHUB_ENV
+          ENV_SHORT=$(echo ${{needs.setup.outputs.environment}} | cut -c1-1)
+          echo "RESOURCE_GROUP=pagopa-$ENV_SHORT-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
+          echo "APP_NAME=pagopa-$ENV_SHORT-weu-nodo-re-fn" >> $GITHUB_ENV
           echo "REGISTRY_IMAGE=ghcr.io/pagopa/pagopa-nodo-re-to-datastore:${{needs.release.outputs.version}}" >> $GITHUB_ENV
 
 
