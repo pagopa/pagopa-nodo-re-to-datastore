@@ -167,9 +167,9 @@ jobs:
     strategy:
       matrix:
         environment: [ dev, uat, prod ]
-      with:
-        environment: ${{ matrix.environment }}
-        target: ${{ needs.setup.outputs.environment }}
+    with:
+      environment: ${{ matrix.environment }}
+      target: ${{ needs.setup.outputs.environment }}
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v3
