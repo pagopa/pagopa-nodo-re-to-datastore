@@ -114,28 +114,20 @@ jobs:
         
       # Set Environment
       - if: ${{ github.event.inputs.environment == null || github.event.inputs.environment == 'dev' }}
-        run: |
-          echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-          echo "ENV_SHORT=d" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'uat' }}
-        run: |
-          echo "ENVIRONMENT=uat" >> $GITHUB_ENV
-          echo "ENV_SHORT=u" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=uat" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'prod' }}
-        run: |
-          echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-          echo "ENV_SHORT=p" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=prod" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'all' }}
-        run: |
-          echo "ENVIRONMENT=all" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=all" >> $GITHUB_ENV
 
       - id: output
         name: Set Output
-        run: |
-          echo "environment=${{env.ENVIRONMENT}}" >> $GITHUB_OUTPUT
+        run: echo "environment=${{env.ENVIRONMENT}}" >> $GITHUB_OUTPUT
 
   release:
     name: Create a New Release
@@ -191,8 +183,8 @@ jobs:
 
       - name: Set env variables
         run: |
-          echo "RESOURCE_GROUP=pagopa-${{env.ENV_SHORT}}-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
-          echo "APP_NAME=pagopa-${{env.ENV_SHORT}}-weu-nodo-re-fn" >> $GITHUB_ENV
+          echo "RESOURCE_GROUP=pagopa-${{needs.setup.outputs.environment:0:1}}-weu-nodo-re-to-datastore-rg" >> $GITHUB_ENV
+          echo "APP_NAME=pagopa-${{needs.setup.outputs.environment:0:1}}-weu-nodo-re-fn" >> $GITHUB_ENV
           echo "REGISTRY_IMAGE=ghcr.io/pagopa/pagopa-nodo-re-to-datastore:${{needs.release.outputs.version}}" >> $GITHUB_ENV
 
 
