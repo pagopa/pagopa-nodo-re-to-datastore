@@ -1,4 +1,4 @@
-name: Release And Deploy Azure Function
+name: Release And Deploy
 
 # Controls when the workflow will run
 on:
@@ -20,19 +20,32 @@ on:
       semver:
         required: true
         type: choice
-        description: Select the new Semantic Version
+        description: Select the version
         options:
-          - major
-          - minor
-          - patch
-          - buildNumber
+          - ''
           - skip
+          - promote
+          - patch
+          - new_release
+          - breaking_change
+          # promote (skip)
+          # patch (patch)
+          # new_release (minor)
+          # breaking_change (major)
+          
+          # if DEV  -> skip, patch, new-release (minor) or breaking-change (major)
+          # if UAT  -> promote or patch (patch + branch_name)
+          # if PROD -> promote or patch (patch + branch_name)
+
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      semver:
+        required: true
+        type: string
         default: skip
-      beta:
-        required: false
-        type: boolean
-        description: Deploy function on Azure in beta version
-        default: false
 
 permissions:
   packages: write
@@ -53,9 +66,11 @@ jobs:
       semver: ${{ steps.get_semver.outputs.semver }}
       environment: ${{ steps.output.outputs.environment }}
     steps:
-      - name: Get semver
-        id: get_semver
-        uses: pagopa/github-actions-template/semver-setup@v1.3.0
+      - name: pull request rejected
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged != true
+        run: |
+          echo "❌ PR was closed without a merge"
+          exit 1
 
       # Set Semver
       - run: echo "SEMVER=patch" >> $GITHUB_ENV
@@ -96,24 +111,24 @@ jobs:
       - id: get_semver
         name: Set Output
         run: echo "semver=${{env.SEMVER}}" >> $GITHUB_OUTPUT
-
+        
       # Set Environment
       - if: ${{ github.event.inputs.environment == null || github.event.inputs.environment == 'dev' }}
-        run: echo "ENVIRNOMENT=dev" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'uat' }}
-        run: echo "ENVIRNOMENT=uat" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=uat" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'prod' }}
-        run: echo "ENVIRNOMENT=prod" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=prod" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'all' }}
-        run: echo "ENVIRNOMENT=all" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=all" >> $GITHUB_ENV
 
       - id: output
         name: Set Output
         run: |
-          echo "environment=${{env.ENVIRNOMENT}}" >> $GITHUB_OUTPUT
+          echo "environment=${{env.ENVIRONMENT}}" >> $GITHUB_OUTPUT
 
   release:
     name: Create a New Release
@@ -128,8 +143,7 @@ jobs:
         with:
           semver: ${{ needs.setup.outputs.semver }}
           github_token: ${{ secrets.BOT_TOKEN_GITHUB }}
-          beta: ${{ inputs.beta }}
-          skip_ci: ${{ inputs.beta }}
+          beta: false
 
   build-and-push:
     needs: [ setup, release ]
