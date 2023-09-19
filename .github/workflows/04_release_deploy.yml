@@ -149,7 +149,7 @@ jobs:
     needs: [ setup, release ]
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    if: ${{ inputs.semver != 'skip' }}
+    if: ${{ needs.setup.outputs.semver != 'skip' }}
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Build and Push
@@ -187,14 +187,14 @@ jobs:
 
       - name: 'Azure CLI script: start staging slot'
         uses: azure/CLI@v1
-        if: ${{ contains(github.event.inputs.environment, 'prod') }}
+        if: ${{ needs.setup.outputs.environment == 'prod' }}
         with:
           inlineScript: |
             az functionapp start --name ${{ env.APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
 
       - name: 'Run Azure Functions Container Action: staging slot'
         uses: Azure/functions-container-action@v1.2.1
-        if: ${{ contains(github.event.inputs.environment, 'prod')}}
+        if: ${{ needs.setup.outputs.environment == 'prod' }}
         with:
           app-name: ${{ env.APP_NAME }}
           image: ${{ env.REGISTRY_IMAGE }}
@@ -202,7 +202,7 @@ jobs:
 
       - name: 'Deploy Approval'
         uses: trstringer/manual-approval@v1
-        if: ${{ contains(github.event.inputs.environment, 'prod')}}
+        if: ${{ needs.setup.outputs.environment == 'prod' }}
         with:
           secret: ${{ secrets.BOT_TOKEN_GITHUB }}
           approvers: pagopa-team-core
@@ -221,7 +221,7 @@ jobs:
 
       - name: 'Azure CLI script: end staging slot'
         uses: azure/CLI@v1
-        if: ${{ contains(github.event.inputs.environment, 'prod') }}
+        if: ${{ needs.setup.outputs.environment == 'prod' }}
         with:
           inlineScript: |
             az functionapp stop --name ${{ env.APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
