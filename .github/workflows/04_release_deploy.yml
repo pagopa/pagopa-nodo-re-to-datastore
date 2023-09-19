@@ -18,7 +18,6 @@ on:
           - dev
           - uat
           - prod
-          - all
       semver:
         required: false
         type: choice
@@ -102,12 +101,6 @@ jobs:
       - if: ${{ inputs.version == 'promote' || inputs.version == 'skip' }}
         run: echo "SEMVER=skip" >> $GITHUB_ENV
 
-      # if deploy 'all' then skip semver
-      - if: ${{ github.event.inputs.environment == 'all' }}
-        run: |
-          echo "All environment selected then skip semver generation"
-          echo "SEMVER=skip" >> $GITHUB_ENV
-
       - id: get_semver
         name: Set Output
         run: echo "semver=${{env.SEMVER}}" >> $GITHUB_OUTPUT
@@ -161,15 +154,10 @@ jobs:
 
   deploy_azure_fn:
     name: Deploy Azure function
+    environment: ${{ needs.setup.outputs.environment }}
     needs: [ setup, release, build-and-push ]
     runs-on: ubuntu-latest
     if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-    strategy:
-      matrix:
-        environment: [ dev, uat, prod ]
-    with:
-      environment: ${{ matrix.environment }}
-      target: ${{ needs.setup.outputs.environment }}
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v3
