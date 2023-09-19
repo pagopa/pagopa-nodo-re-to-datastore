@@ -5,7 +5,7 @@
 
     <groupId>it.gov.pagopa</groupId>
     <artifactId>nodoretodatastore</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.4-1-add-notification-webhook</version>
     <packaging>jar</packaging>
 
     <name>Nodo RE to datastore Fn</name>
