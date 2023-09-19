@@ -57,6 +57,50 @@ jobs:
         id: get_semver
         uses: pagopa/github-actions-template/semver-setup@v1.3.0
 
+<<<<<<< Updated upstream
+=======
+      # Set Semver
+      - run: echo "SEMVER=patch" >> $GITHUB_ENV
+
+      - if: ${{ github.event.pull_request.merged && ( github.event.inputs.environment == 'uat' || github.event.inputs.environment == 'prod') && ( contains(github.event.pull_request.labels.*.name, 'breaking-change') || contains(github.event.pull_request.labels.*.name, 'new-release') || contains(github.event.pull_request.labels.*.name, 'ignore-for-release') ) }}
+        run: |
+          echo "❌ UAT and PROD accept only \"patch\" or \"promote\""
+          exit 1
+          
+      - if: ${{ github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'ignore-for-release') }}
+        run: echo "SEMVER=skip" >> $GITHUB_ENV
+
+      - if: ${{ (github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'new-release')) }}
+        run: echo "SEMVER=minor" >> $GITHUB_ENV
+
+      - if: ${{ (github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'breaking-change')) }}
+        run: echo "SEMVER=major" >> $GITHUB_ENV
+
+      # force semver if dev, !=main or skip release
+      - if: ${{ inputs.version == 'new_release' }}
+        run: echo "SEMVER=minor" >> $GITHUB_ENV
+
+      - if: ${{ inputs.version == 'breaking_change' }}
+        run: echo "SEMVER=major" >> $GITHUB_ENV
+
+      - if: ${{ github.ref_name != 'main' && inputs.version == '' }}
+        run: echo "SEMVER=buildNumber" >> $GITHUB_ENV
+
+      - if: ${{ inputs.version == 'promote' || inputs.version == 'skip' }}
+        run: echo "SEMVER=skip" >> $GITHUB_ENV
+
+      # if deploy 'all' then skip semver
+      - if: ${{ github.event.inputs.environment == 'all' }}
+        run: |
+          echo "All environment selected then skip semver generation"
+          echo "SEMVER=skip" >> $GITHUB_ENV
+
+      - id: get_semver
+        name: Set Output
+        run: echo "semver=${{env.SEMVER}}" >> $GITHUB_OUTPUT
+
+      # Set Environment
+>>>>>>> Stashed changes
       - if: ${{ github.event.inputs.environment == null || github.event.inputs.environment == 'dev' }}
         run: echo "ENVIRNOMENT=dev" >> $GITHUB_ENV
 
