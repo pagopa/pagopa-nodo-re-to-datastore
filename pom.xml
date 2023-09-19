@@ -5,7 +5,7 @@
 
     <groupId>it.gov.pagopa</groupId>
     <artifactId>nodoretodatastore</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.2-1-NOD-472-migrazione-cd-su-git-hub-action-per-nodo-re-to-datastore</version>
     <packaging>jar</packaging>
 
     <name>Nodo RE to datastore Fn</name>
