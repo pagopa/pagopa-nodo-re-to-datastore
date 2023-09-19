@@ -104,7 +104,9 @@ jobs:
 
       # if deploy 'all' then skip semver
       - if: ${{ github.event.inputs.environment == 'all' }}
-        run: echo "SEMVER=skip" >> $GITHUB_ENV
+        run: |
+          echo "All environment selected then skip semver generation"
+          echo "SEMVER=skip" >> $GITHUB_ENV
 
       - id: get_semver
         name: Set Output
