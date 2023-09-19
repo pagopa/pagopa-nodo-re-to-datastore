@@ -230,21 +230,21 @@ jobs:
         run: |
           az logout
 
-##  notify:
-##    needs: [ deploy_azure_fn ]
-##    runs-on: ubuntu-latest
-##    name: Notify
-##    if: always()
-##    steps:
-##      - name: Report Status
-##        if: always()
-##        uses: ravsamhq/notify-slack-action@v2
-##        with:
-##          status: ${{ needs.deploy_azure_fn.result }}
-##          token: ${{ secrets.GITHUB_TOKEN }}
-##          notify_when: 'failure,skipped'
-##          notification_title: '{workflow} has {status_message}'
-##          message_format: '{emoji} <{workflow_url}|{workflow}> {status_message} in <{repo_url}|{repo}>'
-##          footer: 'Linked to Repo <{repo_url}|{repo}>'
-##        env:
-##          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  notify:
+    needs: [ setup, release, deploy_azure_fn ]
+    runs-on: ubuntu-latest
+    name: Notify
+    if: always()
+    steps:
+      - name: Report Status
+        if: always()
+        uses: ravsamhq/notify-slack-action@v2
+        with:
+          status: ${{ needs.deploy_azure_fn.result }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: 'New Release on ${{ needs.setup.outputs.environment }} ${{ needs.release.outputs.version }} has {status_message}'
+          message_format: '{emoji} <{run_url}|{workflow}> {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked to <{workflow_url}| workflow file>'
+          icon_success: ':white_check_mark:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
