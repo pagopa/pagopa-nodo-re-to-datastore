@@ -44,6 +44,7 @@ on:
       environment:
         required: true
         type: string
+
       semver:
         required: true
         type: string
@@ -55,9 +56,6 @@ permissions:
   issues: write
   id-token: write
   actions: read
-
-env:
-  ENV_SHORT: ${{ (contains(github.event.inputs.environment,'dev') && 'd') || (contains(github.event.inputs.environment, 'uat') && 'u') || (contains(github.event.inputs.environment,'prod') && 'p') }}
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -116,16 +114,23 @@ jobs:
         
       # Set Environment
       - if: ${{ github.event.inputs.environment == null || github.event.inputs.environment == 'dev' }}
-        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+        run: |
+          echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+          echo "ENV_SHORT=d" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'uat' }}
-        run: echo "ENVIRONMENT=uat" >> $GITHUB_ENV
+        run: |
+          echo "ENVIRONMENT=uat" >> $GITHUB_ENV
+          echo "ENV_SHORT=u" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'prod' }}
-        run: echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+        run: |
+          echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+          echo "ENV_SHORT=p" >> $GITHUB_ENV
 
       - if: ${{ github.event.inputs.environment == 'all' }}
-        run: echo "ENVIRONMENT=all" >> $GITHUB_ENV
+        run: |
+          echo "ENVIRONMENT=all" >> $GITHUB_ENV
 
       - id: output
         name: Set Output
@@ -164,11 +169,15 @@ jobs:
 
   deploy_azure_fn:
     name: Deploy Azure function
-    environment: ${{ needs.setup.outputs.environment }}
     needs: [ setup, release, build-and-push ]
     runs-on: ubuntu-latest
     if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-
+    strategy:
+      matrix:
+        environment: [ dev, uat, prod ]
+      with:
+        environment: ${{ matrix.environment }}
+        target: ${{ needs.setup.outputs.environment }}
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v3
