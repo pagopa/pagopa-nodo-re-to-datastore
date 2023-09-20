@@ -51,7 +51,7 @@ jobs:
       name: ${{ inputs.environment }}
     steps:
       - name: Create staging slots
-        uses: pagopa/github-actions-template/azure-function-start-staging-slot@87b66fbfe6af7524355bb66bed4c991a622bebda
+        uses: pagopa/github-actions-template/azure-function-start-staging-slot@a1b72480e9ac555364be0b7ecdcc8f5ab1c89ad9
         with:
           branch: ${{ github.ref_name }}
           client_id: ${{ secrets.CLIENT_ID }}
@@ -72,7 +72,7 @@ jobs:
       name: ${{ inputs.environment }}
     steps:
       - name: Deploy Azure Function
-        uses: pagopa/github-actions-template/azure-functions-deploy@87b66fbfe6af7524355bb66bed4c991a622bebda
+        uses: pagopa/github-actions-template/azure-functions-deploy@a1b72480e9ac555364be0b7ecdcc8f5ab1c89ad9
         with:
           branch: ${{ github.ref_name }}
           client_id: ${{ secrets.CLIENT_ID }}
@@ -92,7 +92,7 @@ jobs:
       name: ${{ inputs.environment }}
     steps:
       - name: Deploy Azure Function
-        uses: pagopa/github-actions-template/azure-function-stop-staging-slot@87b66fbfe6af7524355bb66bed4c991a622bebda
+        uses: pagopa/github-actions-template/azure-function-stop-staging-slot@a1b72480e9ac555364be0b7ecdcc8f5ab1c89ad9
         with:
           branch: ${{ github.ref_name }}
           client_id: ${{ secrets.CLIENT_ID }}

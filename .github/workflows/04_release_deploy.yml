@@ -60,7 +60,9 @@ jobs:
     steps:
       - name: Semver setup
         id: semver_setup
-        uses: pagopa/github-actions-template/node-semver-setup@87b66fbfe6af7524355bb66bed4c991a622bebda
+        uses: pagopa/github-actions-template/node-semver-setup@a1b72480e9ac555364be0b7ecdcc8f5ab1c89ad9
+        with:
+          semver: ${{ inputs.semver }}
 
       # Set deploy variables
       - run: echo "ENV_SHORT=$(echo ${{steps.semver_setup.outputs.environment}} | cut -c1-1)" >>  $GITHUB_ENV
