@@ -36,15 +36,17 @@ jobs:
     if: ${{ inputs.target == inputs.environment && inputs.target == 'prod' }}
     environment:
       name: ${{ inputs.environment }}
-    uses: pagopa/github-actions-template/azure-function-start-staging-slot@ff1d20edd8236ade3cb06020c273292b9a62d391
-    with:
-      branch: ${{ github.ref_name }}
-      client_id: ${{ secrets.CLIENT_ID }}
-      tenant_id: ${{ secrets.TENANT_ID }}
-      subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
-      resource_group: ${{ inputs.resource_group }}
-      app_name: ${{ inputs.app_name }}
-      registry_image: ${{ inputs.registry_image }}
+    steps:
+      - name: Create staging slots
+        uses: pagopa/github-actions-template/azure-function-start-staging-slot@ff1d20edd8236ade3cb06020c273292b9a62d391
+        with:
+          branch: ${{ github.ref_name }}
+          client_id: ${{ secrets.CLIENT_ID }}
+          tenant_id: ${{ secrets.TENANT_ID }}
+          subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+          resource_group: ${{ inputs.resource_group }}
+          app_name: ${{ inputs.app_name }}
+          registry_image: ${{ inputs.registry_image }}
 
 
   # Executing the deploy of the Azure function with the new image
@@ -54,14 +56,16 @@ jobs:
     needs: [ create_staging_slot ]
     environment:
       name: ${{ inputs.environment }}
-    uses: pagopa/github-actions-template/azure-function-deploy@ff1d20edd8236ade3cb06020c273292b9a62d391
-    with:
-      branch: ${{ github.ref_name }}
-      client_id: ${{ secrets.CLIENT_ID }}
-      tenant_id: ${{ secrets.TENANT_ID }}
-      subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
-      app_name: ${{ inputs.app_name }}
-      registry_image: ${{ inputs.registry_image }}
+    steps:
+      - name: Deploy Azure Function
+        uses: pagopa/github-actions-template/azure-function-deploy@ff1d20edd8236ade3cb06020c273292b9a62d391
+        with:
+          branch: ${{ github.ref_name }}
+          client_id: ${{ secrets.CLIENT_ID }}
+          tenant_id: ${{ secrets.TENANT_ID }}
+          subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+          app_name: ${{ inputs.app_name }}
+          registry_image: ${{ inputs.registry_image }}
 
 
   # Stopping the Azure Function's staging slot, if deploying in PROD
@@ -72,12 +76,14 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: ${{ inputs.environment }}
-    uses: pagopa/github-actions-template/azure-function-stop-staging-slot@ff1d20edd8236ade3cb06020c273292b9a62d391
-    with:
-      branch: ${{ github.ref_name }}
-      client_id: ${{ secrets.CLIENT_ID }}
-      tenant_id: ${{ secrets.TENANT_ID }}
-      subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
-      resource_group: ${{ inputs.resource_group }}
-      app_name: ${{ inputs.app_name }}
-      registry_image: ${{ inputs.registry_image }}
+    steps:
+      - name: Deploy Azure Function
+        uses: pagopa/github-actions-template/azure-function-stop-staging-slot@ff1d20edd8236ade3cb06020c273292b9a62d391
+        with:
+          branch: ${{ github.ref_name }}
+          client_id: ${{ secrets.CLIENT_ID }}
+          tenant_id: ${{ secrets.TENANT_ID }}
+          subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+          resource_group: ${{ inputs.resource_group }}
+          app_name: ${{ inputs.app_name }}
+          registry_image: ${{ inputs.registry_image }}
