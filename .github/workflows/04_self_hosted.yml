@@ -32,13 +32,13 @@ jobs:
   show_input:
     runs-on: ubuntu-latest
     steps:
-      - name: Set App Name
+      - name: Get input parameters
         run: |
-          echo ${{ inputs.environment }}
-          echo ${{ inputs.target }}
-          echo ${{ inputs.resource_group }}
-          echo ${{ inputs.app_name }}
-          echo ${{ inputs.registry_image }}
+          echo environment=${{ inputs.environment }}
+          echo target=${{ inputs.target }}
+          echo resource_group=${{ inputs.resource_group }}
+          echo app_name=${{ inputs.app_name }}
+          echo registry_image=${{ inputs.registry_image }}
 
   # Starting the Azure Function's staging slot, if deploying in PROD
   start_staging_slot:
@@ -65,6 +65,7 @@ jobs:
     name: Deploy Azure Function
     runs-on: ubuntu-22.04
     needs: [ start_staging_slot ]
+    if: ${{ always() && inputs.target == inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
     steps:
