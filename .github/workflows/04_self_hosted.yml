@@ -71,7 +71,7 @@ jobs:
       name: ${{ inputs.environment }}
     steps:
       - name: Deploy Azure Function
-        uses: pagopa/github-actions-template/azure-function-deploy@87b66fbfe6af7524355bb66bed4c991a622bebda
+        uses: pagopa/github-actions-template/azure-functions-deploy@87b66fbfe6af7524355bb66bed4c991a622bebda
         with:
           branch: ${{ github.ref_name }}
           client_id: ${{ secrets.CLIENT_ID }}
