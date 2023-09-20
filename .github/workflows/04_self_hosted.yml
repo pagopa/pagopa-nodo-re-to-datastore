@@ -53,7 +53,7 @@ jobs:
   deploy:
     name: Deploy Azure Function
     runs-on: ubuntu-22.04
-    needs: [ create_staging_slot ]
+    needs: [ start_staging_slot ]
     environment:
       name: ${{ inputs.environment }}
     steps:
@@ -71,7 +71,7 @@ jobs:
   # Stopping the Azure Function's staging slot, if deploying in PROD
   stop_staging_slot:
     name: Clean staging slots
-    needs: [ create_staging_slot, deploy ]
+    needs: [ stop_staging_slot, deploy ]
     if: ${{ success() || failure() && (inputs.target == inputs.environment && inputs.target == 'prod') }}
     runs-on: ubuntu-22.04
     environment:
