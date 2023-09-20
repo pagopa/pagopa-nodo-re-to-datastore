@@ -31,15 +31,16 @@ permissions:
 jobs:
   show_input:
     runs-on: ubuntu-latest
+    if: ${{ inputs.target == inputs.environment }}
     steps:
       - name: Get input parameters
-        if: ${{ inputs.target == inputs.environment }}
         run: |
           echo environment=${{ inputs.environment }}
           echo target=${{ inputs.target }}
           echo resource_group=${{ inputs.resource_group }}
           echo app_name=${{ inputs.app_name }}
           echo registry_image=${{ inputs.registry_image }}
+          
 
   # Starting the Azure Function's staging slot, if deploying in PROD
   start_staging_slot:
