@@ -29,6 +29,17 @@ permissions:
   contents: read
 
 jobs:
+  show_input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set App Name
+        run: |
+          echo ${{ inputs.environment }}
+          echo ${{ inputs.target }}
+          echo ${{ inputs.resource_group }}
+          echo ${{ inputs.app_name }}
+          echo ${{ inputs.registry_image }}
+
   # Starting the Azure Function's staging slot, if deploying in PROD
   start_staging_slot:
     name: Create staging slots
