@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get input parameters
+        if: ${{ inputs.target == inputs.environment }}
         run: |
           echo environment=${{ inputs.environment }}
           echo target=${{ inputs.target }}
