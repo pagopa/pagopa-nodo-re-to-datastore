@@ -115,14 +115,16 @@ jobs:
     strategy:
       matrix:
         environment: [ dev, uat, prod ]
-    uses: ./.github/workflows/04_self_hosted.yml
-    with:
-      environment: ${{ matrix.environment }}
-      target: ${{ needs.setup.outputs.environment }}
-      resource_group: ${{ needs.setup.outputs.resource_group }}
-      app_name: ${{ needs.setup.outputs.app_name }}
-      registry_image: ${{ needs.release.outputs.registry_image }}
     secrets: inherit
+    steps:
+      - name: Deploy Azure function
+        uses: ./.github/workflows/04_self_hosted.yml
+        with:
+          environment: ${{ matrix.environment }}
+          target: ${{ needs.setup.outputs.environment }}
+          resource_group: ${{ needs.setup.outputs.resource_group }}
+          app_name: ${{ needs.setup.outputs.app_name }}
+          registry_image: ${{ needs.release.outputs.registry_image }}
 
   notify:
     name: Notify
